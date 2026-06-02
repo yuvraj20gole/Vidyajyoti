@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<!--
+╔══════════════════════════════════════════════════════════════════════╗
+║              VIDYAJYOTI TRACKER — Ground Station UI                  ║
+║              Student Satellite Program · Mumbai, India               ║
+╠══════════════════════════════════════════════════════════════════════╣
+║  HOW TO RUN LOCALLY:                                                 ║
+║  Option 1 (Easiest): Just open this file in any browser              ║
+║             → Double-click satellite-ui.html                         ║
+║             → Or drag & drop into Chrome/Firefox/Edge               ║
+║                                                                      ║
+║  Option 2 (Recommended for best experience):                         ║
+║             python3 -m http.server 8000                              ║
+║             Then open: http://localhost:8000/satellite-ui.html       ║
+║                                                                      ║
+║  Option 3 (Node):                                                    ║
+║             npx serve .                                              ║
+║             Then open: http://localhost:3000/satellite-ui.html       ║
+║                                                                      ║
+║  FONTS: Works online (Google Fonts) + offline (system fallbacks)     ║
+║  DATA:  All dummy data — replace sensor calls with your API          ║
+║  TABS:  01 Telemetry | 02 Orbit Tracker | 03 Dashboard               ║
+╚══════════════════════════════════════════════════════════════════════╝
+-->
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vidyajyoti Tracker</title>
+<!-- Fonts: loads from Google when online, falls back to system fonts offline -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" onerror="document.getElementById('font-fallback').disabled=false">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script src="https://unpkg.com/globe.gl@2.32.1/dist/globe.gl.min.js"></script>
+<style id="font-fallback" disabled>
+  /* Offline fallback fonts - activated automatically if Google Fonts fails */
+  :root {
+    --fh: 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+    --fb: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    --fm: 'Courier New', 'Lucida Console', monospace;
+  }
+</style>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg0:#060a12;--bg1:#0a1020;--bg2:#0f1830;
+  --glass:rgba(12,22,50,0.72);--glass2:rgba(20,35,70,0.5);
+  --b1:rgba(100,160,255,0.14);--b2:rgba(100,160,255,0.26);--b3:rgba(100,160,255,0.42);
+  --acc:#4d9fff;--acc2:#7eb8ff;--grn:#00e5a0;--org:#ff7c3a;--red:#ff4466;
+  --pur:#9d6fff;--wrn:#ffc444;--txt:#c8deff;--dim:#6a8ab5;--white:#e8f0ff;
+  --fh:'Syne',sans-serif;--fb:'Space Grotesk',sans-serif;--fm:'JetBrains Mono',monospace;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg0);}
+body{color:var(--txt);font-family:var(--fb);display:flex;flex-direction:column;}
+
+/* ── COSMOS ── */
+#cosmos{position:fixed;inset:0;z-index:0;overflow:hidden;}
+.neb{position:absolute;border-radius:50%;filter:blur(90px);pointer-events:none;}
+
+/* ── TOPBAR ── */
+#topbar{
+  position:relative;z-index:20;flex-shrink:0;height:52px;
+  display:flex;align-items:center;justify-content:space-between;padding:0 20px;
+  background:rgba(6,10,18,0.94);border-bottom:1px solid var(--b2);backdrop-filter:blur(24px);
+}
+.tb-left{display:flex;align-items:center;gap:14px;flex:1;min-width:0;}
+.logo-wrap{display:flex;align-items:center;gap:10px;}
+.logo-ring{width:32px;height:32px;border-radius:50%;border:2px solid var(--acc);
+  display:flex;align-items:center;justify-content:center;position:relative;animation:lspin 8s linear infinite;}
+.logo-ring::before{content:'';position:absolute;width:20px;height:20px;border-radius:50%;
+  border:1px solid rgba(77,159,255,.4);animation:lspin 4s linear infinite reverse;}
+.logo-ring::after{content:'';width:6px;height:6px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc);}
+@keyframes lspin{to{transform:rotate(360deg);}}
+.logo-name{font-family:var(--fh);font-size:.92rem;font-weight:800;letter-spacing:3px;color:var(--white);text-transform:uppercase;}
+.logo-name span{color:var(--acc);}
+
+/* Faculty 3 tabs */
+.tab-nav{display:flex;gap:3px;margin-left:10px;padding:4px;background:rgba(10,16,32,.7);border:1px solid var(--b1);border-radius:26px;flex-shrink:0;}
+.tabn{
+  padding:5px 18px;border-radius:22px;font-family:var(--fb);font-size:.7rem;font-weight:600;letter-spacing:.5px;
+  color:var(--dim);background:transparent;border:none;cursor:pointer;transition:all .22s;white-space:nowrap;
+}
+.tabn:hover{color:var(--txt);}
+.tabn.active{color:var(--white);background:rgba(77,159,255,.22);box-shadow:0 0 14px rgba(77,159,255,.2);}
+.tabn-num{font-size:.52rem;opacity:.5;margin-right:4px;}
+
+.tb-meta{
+  display:flex;align-items:center;gap:14px;margin-left:16px;padding-left:16px;
+  border-left:1px solid var(--b1);
+  font-family:var(--fm);font-size:.68rem;color:var(--dim);letter-spacing:1px;
+  white-space:nowrap;flex-shrink:0;
+}
+.tb-utc{color:var(--acc2);}
+.tb-sep{opacity:.3;}
+.tb-right{display:flex;align-items:center;gap:10px;}
+.spill{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:18px;
+  background:var(--glass);border:1px solid var(--b1);font-family:var(--fm);font-size:.6rem;color:var(--dim);}
+.sdot{width:6px;height:6px;border-radius:50%;animation:blink 1.8s ease-in-out infinite;}
+.sdot.g{background:var(--grn);box-shadow:0 0 6px var(--grn);}
+.sdot.w{background:var(--wrn);box-shadow:0 0 6px var(--wrn);animation-duration:.9s;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* ── APP LAYOUT ── */
+#app{position:relative;z-index:2;flex:1;display:grid;grid-template-columns:272px 1fr 292px;overflow:hidden;}
+
+/* ── SHARED PANEL STYLES ── */
+.lpanel{background:rgba(6,10,18,.9);border-right:1px solid var(--b1);backdrop-filter:blur(22px);display:flex;flex-direction:column;overflow:hidden;}
+.rpanel{background:rgba(6,10,18,.9);border-left:1px solid var(--b1);backdrop-filter:blur(22px);display:flex;flex-direction:column;overflow-y:auto;}
+.rpanel::-webkit-scrollbar{width:3px;}
+.rpanel::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px;}
+
+.psec{padding:13px 15px;border-bottom:1px solid var(--b1);}
+.pstitle{font-family:var(--fh);font-size:.55rem;font-weight:700;letter-spacing:3px;color:var(--dim);text-transform:uppercase;margin-bottom:11px;display:flex;align-items:center;gap:8px;}
+.pstitle::after{content:'';flex:1;height:1px;background:var(--b1);}
+
+.card{background:var(--glass2);border:1px solid var(--b1);border-radius:8px;padding:12px 14px;position:relative;overflow:hidden;transition:border-color .2s,transform .15s;cursor:default;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acc),transparent);opacity:.45;}
+.card:hover{border-color:var(--b2);transform:translateY(-1px);}
+.card-shine{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.035) 0%,transparent 55%);pointer-events:none;border-radius:8px;}
+
+/* ── INSIGHT CARDS ── */
+.ic{margin-bottom:8px;}
+.ic-badge{font-family:var(--fm);font-size:.5rem;letter-spacing:2px;text-transform:uppercase;padding:2px 7px;border-radius:3px;display:inline-block;margin-bottom:6px;}
+.ic-badge.pred{background:rgba(77,159,255,.15);color:var(--acc2);}
+.ic-badge.alert{background:rgba(255,68,102,.15);color:var(--red);}
+.ic-badge.rec{background:rgba(0,229,160,.15);color:var(--grn);}
+.ic-title{font-family:var(--fb);font-size:.7rem;font-weight:600;color:var(--white);margin-bottom:4px;}
+.ic-body{font-family:var(--fb);font-size:.62rem;color:var(--dim);line-height:1.5;}
+.ic-sat{display:flex;align-items:center;gap:5px;margin-top:6px;}
+.ic-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.ic-sname{font-family:var(--fm);font-size:.56rem;color:var(--dim);}
+
+/* ── SAT LIST ── */
+.sat-list{flex:1;overflow-y:auto;padding:10px 12px;}
+.sat-list::-webkit-scrollbar{width:2px;}
+.sat-row{display:flex;align-items:center;gap:10px;padding:8px 9px;border-radius:7px;cursor:pointer;transition:all .18s;border:1px solid transparent;margin-bottom:3px;}
+.sat-row:hover{background:var(--glass);border-color:var(--b1);}
+.sat-row.active{background:rgba(77,159,255,.1);border-color:rgba(77,159,255,.3);}
+.sat-ico{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.88rem;flex-shrink:0;}
+.sat-nm{font-family:var(--fh);font-size:.7rem;font-weight:700;color:var(--white);letter-spacing:.4px;}
+.sat-sub{font-family:var(--fm);font-size:.56rem;color:var(--dim);margin-top:1px;}
+.sat-badge{font-family:var(--fm);font-size:.5rem;padding:2px 6px;border-radius:3px;flex-shrink:0;}
+.leo{background:rgba(0,229,160,.1);color:var(--grn);border:1px solid rgba(0,229,160,.28);}
+.meo{background:rgba(157,111,255,.1);color:var(--pur);border:1px solid rgba(157,111,255,.28);}
+
+/* ── CENTER PANEL ── */
+#center{position:relative;overflow:hidden;display:flex;flex-direction:column;background:var(--bg0);}
+
+/* Tab panels */
+.tab-panel{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .4s ease;overflow:hidden;display:flex;flex-direction:column;}
+.tab-panel.active{opacity:1;pointer-events:all;}
+
+/* ── TAB 1: TELEMETRY ── */
+#tab1{padding:16px;overflow-y:auto;gap:12px;}
+#tab1::-webkit-scrollbar{width:3px;}
+#tab1::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px;}
+
+.t1-hero{display:flex;gap:12px;margin-bottom:12px;}
+.t1-big{flex:1;background:var(--glass2);border:1px solid var(--b1);border-radius:10px;padding:18px 20px;position:relative;overflow:hidden;}
+.t1-big::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acc),transparent);opacity:.5;}
+.t1-big-lbl{font-family:var(--fm);font-size:.55rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
+.t1-big-val{font-family:var(--fh);font-size:2.6rem;font-weight:800;color:var(--white);line-height:1;}
+.t1-big-unit{font-family:var(--fm);font-size:.75rem;color:var(--acc);margin-left:4px;}
+.t1-big-sub{font-family:var(--fm);font-size:.58rem;color:var(--dim);margin-top:5px;}
+
+.t1-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.t1-metric{background:var(--glass2);border:1px solid var(--b1);border-radius:8px;padding:14px 15px;position:relative;overflow:hidden;cursor:default;transition:border-color .18s,transform .15s;}
+.t1-metric:hover{border-color:var(--b2);transform:translateY(-2px);}
+.t1-metric::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.03),transparent 60%);pointer-events:none;}
+.tm-val{font-family:var(--fh);font-size:1.6rem;font-weight:800;color:var(--white);line-height:1.1;}
+.tm-unit{font-family:var(--fm);font-size:.65rem;margin-left:3px;}
+.tm-lbl{font-family:var(--fm);font-size:.52rem;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;margin-top:4px;}
+.tm-bar-wrap{height:3px;background:rgba(100,160,255,.1);border-radius:2px;margin-top:8px;}
+.tm-bar{height:100%;border-radius:2px;transition:width 1s cubic-bezier(.22,1,.36,1);}
+
+.t1-extras{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.t1-extra{background:var(--glass);border:1px solid var(--b1);border-radius:7px;padding:11px 12px;text-align:center;cursor:default;transition:all .18s;}
+.t1-extra:hover{border-color:var(--b2);transform:scale(1.03);}
+.te-val{font-family:var(--fh);font-size:1.1rem;font-weight:700;color:var(--white);}
+.te-lbl{font-family:var(--fm);font-size:.5rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-top:3px;}
+
+.t1-chart-wrap{background:var(--glass2);border:1px solid var(--b1);border-radius:8px;padding:12px;position:relative;overflow:hidden;}
+.t1-chart-wrap::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acc),transparent);opacity:.4;}
+.t1-chart-title{font-family:var(--fm);font-size:.55rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
+
+.sys-row{display:flex;justify-content:space-between;align-items:center;padding:8px 11px;border:1px solid rgba(100,160,255,.09);border-radius:4px;background:rgba(12,22,50,.5);margin-bottom:6px;transition:all .15s;}
+.sys-row:hover{background:var(--glass);transform:translateX(3px);}
+.sysn{font-family:var(--fm);font-size:.6rem;color:var(--txt);letter-spacing:.5px;}
+.sysbadge{font-family:var(--fm);font-size:.5rem;padding:2px 8px;border-radius:3px;letter-spacing:.8px;}
+.ok{background:rgba(0,229,160,.08);color:var(--grn);border:1px solid rgba(0,229,160,.28);}
+.warn{background:rgba(255,196,68,.08);color:var(--wrn);border:1px solid rgba(255,196,68,.28);}
+
+/* ── TAB 2: ORBIT TRACKER ── */
+#tab2{display:flex;flex-direction:column;overflow:hidden;}
+#mapStage{flex:1;position:relative;min-height:0;}
+#worldMapLeaflet,#globeWrap{position:absolute;top:0;left:0;right:0;bottom:0;z-index:1;}
+#globeWrap{display:none;}
+#indiaMapLeaflet{height:200px;width:100%;z-index:1;}
+.leaflet-container{background:#040918!important;font-family:var(--fm);}
+.leaflet-control-zoom a{background:rgba(6,10,28,.94)!important;color:var(--acc2)!important;border-color:var(--b2)!important;}
+.leaflet-control-attribution{background:rgba(6,10,18,.85)!important;color:var(--dim)!important;font-size:9px!important;}
+.leaflet-control-attribution a{color:var(--acc)!important;}
+.leaflet-popup-content-wrapper{background:rgba(6,10,28,.97)!important;color:var(--txt)!important;border:1px solid var(--b2);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.5);}
+.leaflet-popup-tip{background:rgba(6,10,28,.97)!important;}
+.leaflet-popup-content{font-family:var(--fm);font-size:11px;margin:8px 10px;line-height:1.45;}
+.leaflet-bar{border:none!important;box-shadow:0 2px 12px rgba(0,0,0,.4)!important;}
+#signalBar{flex-shrink:0;background:rgba(6,10,18,.94);border-top:1px solid var(--b1);height:36px;display:flex;align-items:center;padding:0 14px;gap:16px;}
+.sb-item{display:flex;align-items:center;gap:6px;font-family:var(--fm);font-size:.6rem;color:var(--dim);}
+.sb-val{color:var(--acc2);font-weight:500;}
+
+/* Pass table */
+#passTable{flex-shrink:0;background:rgba(6,10,18,.96);border-top:1px solid var(--b1);overflow-x:auto;}
+.pt-header{display:grid;grid-template-columns:90px 65px 60px 50px 70px 65px 60px 60px 75px;
+  padding:5px 12px;font-family:var(--fm);font-size:.53rem;letter-spacing:1px;color:var(--dim);
+  text-transform:uppercase;border-bottom:1px solid rgba(100,160,255,.08);min-width:570px;}
+.pt-row{display:grid;grid-template-columns:90px 65px 60px 50px 70px 65px 60px 60px 75px;
+  padding:5px 12px;font-family:var(--fm);font-size:.58rem;min-width:570px;
+  cursor:pointer;transition:background .15s;border-bottom:1px solid rgba(100,160,255,.04);}
+.pt-row:hover{background:rgba(77,159,255,.07);}
+.pt-row.sel{background:rgba(77,159,255,.1);}
+.pt-header>div,.pt-row>div{padding:3px 2px;}
+.col-sat{color:var(--acc2);font-weight:600;}
+.col-g{color:var(--grn);}
+.col-o{color:var(--org);}
+
+/* Map tooltip */
+#mtt{position:absolute;z-index:40;pointer-events:none;display:none;
+  background:rgba(6,10,28,.96);border:1px solid var(--b2);border-radius:6px;
+  padding:8px 12px;font-family:var(--fm);font-size:.6rem;backdrop-filter:blur(12px);}
+.mtt-name{color:var(--white);font-size:.66rem;font-weight:600;margin-bottom:4px;}
+.mtt-row{display:flex;justify-content:space-between;gap:14px;margin-bottom:2px;}
+.mtt-k{color:var(--dim);}.mtt-v{color:var(--acc);}
+
+/* Polar + signal overlays */
+#polarCanvas{position:absolute;right:12px;bottom:82px;width:130px;height:130px;
+  border-radius:50%;border:1px solid var(--b2);background:rgba(6,10,18,.88);backdrop-filter:blur(10px);z-index:20;}
+#sigCanvas{position:absolute;left:12px;bottom:82px;width:200px;height:72px;
+  background:rgba(6,10,18,.88);border:1px solid var(--b1);border-radius:6px;z-index:20;}
+.sig-title{position:absolute;left:12px;bottom:82px;z-index:21;
+  font-family:var(--fm);font-size:.48rem;color:var(--dim);letter-spacing:1px;padding:5px 8px;}
+
+/* view-mode toggle */
+#view-toggle{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:30;
+  display:flex;gap:2px;background:rgba(6,10,18,.88);border:1px solid var(--b2);border-radius:22px;
+  padding:3px;backdrop-filter:blur(18px);}
+.vtbtn{padding:5px 14px;border-radius:18px;font-family:var(--fm);font-size:.6rem;letter-spacing:1px;
+  color:var(--dim);background:transparent;border:none;cursor:pointer;transition:all .2s;}
+.vtbtn.active{color:var(--white);background:rgba(77,159,255,.2);}
+
+/* ── TAB 3: DASHBOARD ── */
+#tab3{padding:14px;overflow-y:auto;gap:10px;}
+#tab3::-webkit-scrollbar{width:3px;}
+#tab3::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px;}
+
+.ticker{background:var(--glass);border:1px solid var(--b1);border-radius:5px;overflow:hidden;
+  white-space:nowrap;padding:7px 0;margin-bottom:10px;}
+.ticker-inner{display:inline-block;font-family:var(--fm);font-size:.58rem;color:var(--dim);
+  letter-spacing:1px;animation:tick 38s linear infinite;padding-left:100%;}
+@keyframes tick{to{transform:translateX(-50%);}}
+
+.t3-main{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.t3-half{background:var(--glass2);border:1px solid var(--b1);border-radius:8px;padding:13px;position:relative;overflow:hidden;}
+.t3-half::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acc),transparent);opacity:.4;}
+.t3-sec-title{font-family:var(--fm);font-size:.53rem;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:10px;}
+
+.t3-map-panel{background:rgba(6,10,18,.94);border:1px solid var(--b1);border-radius:8px;overflow:hidden;margin-bottom:10px;position:relative;}
+.t3-map-title{font-family:var(--fm);font-size:.53rem;letter-spacing:2px;color:var(--dim);text-transform:uppercase;padding:9px 13px;border-bottom:1px solid var(--b1);}
+
+.t3-stat4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;}
+.t3-s4{background:var(--glass);border:1px solid var(--b1);border-radius:7px;padding:11px;text-align:center;cursor:default;transition:all .18s;}
+.t3-s4:hover{border-color:var(--b2);transform:translateY(-2px);}
+.t3-s4-val{font-family:var(--fh);font-size:1.2rem;font-weight:800;color:var(--white);}
+.t3-s4-lbl{font-family:var(--fm);font-size:.5rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-top:3px;}
+
+.cat-row{display:flex;align-items:center;gap:8px;padding:6px 0;}
+.cat-nm{font-family:var(--fm);font-size:.58rem;color:var(--dim);width:90px;flex-shrink:0;}
+.cat-bw{flex:1;height:4px;background:rgba(100,160,255,.1);border-radius:2px;}
+.cat-b{height:100%;border-radius:2px;}
+.cat-v{font-family:var(--fm);font-size:.58rem;color:var(--txt);width:34px;text-align:right;flex-shrink:0;}
+
+.launch-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid rgba(100,160,255,.06);cursor:pointer;transition:background .15s;}
+.launch-item:hover{background:var(--glass);}
+.li-date{width:36px;flex-shrink:0;text-align:center;background:var(--glass2);border:1px solid var(--b1);border-radius:5px;padding:4px;}
+.li-mon{font-family:var(--fm);font-size:.47rem;color:var(--acc);text-transform:uppercase;letter-spacing:1px;}
+.li-day{font-family:var(--fh);font-size:.9rem;font-weight:800;color:var(--white);line-height:1.1;}
+.li-mission{font-family:var(--fb);font-size:.68rem;font-weight:600;color:var(--white);}
+.li-rocket{font-family:var(--fm);font-size:.56rem;color:var(--dim);margin-top:2px;}
+.li-badge{font-family:var(--fm);font-size:.5rem;padding:2px 7px;border-radius:10px;flex-shrink:0;}
+.li-gov{background:rgba(77,159,255,.15);color:var(--acc2);border:1px solid rgba(77,159,255,.22);}
+.li-priv{background:rgba(0,229,160,.15);color:var(--grn);border:1px solid rgba(0,229,160,.22);}
+.li-mil{background:rgba(255,196,68,.15);color:var(--wrn);border:1px solid rgba(255,196,68,.22);}
+
+/* ── RIGHT PANEL: sat info ── */
+.sic{padding:15px;border-bottom:1px solid var(--b1);position:relative;overflow:hidden;}
+.sic-glow{position:absolute;top:-20px;right:-20px;width:90px;height:90px;border-radius:50%;
+  background:radial-gradient(circle,rgba(77,159,255,.2),transparent 70%);pointer-events:none;}
+.sic-code{font-family:var(--fh);font-size:.5rem;font-weight:700;letter-spacing:4px;color:var(--dim);text-transform:uppercase;margin-bottom:3px;}
+.sic-name{font-family:var(--fh);font-size:1rem;font-weight:800;color:var(--white);margin-bottom:11px;letter-spacing:.8px;}
+.sic-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.sic-m{background:var(--glass);border:1px solid var(--b1);border-radius:6px;padding:9px 11px;transition:border-color .18s;}
+.sic-m:hover{border-color:var(--b2);}
+.sic-mv{font-family:var(--fh);font-size:1.1rem;font-weight:700;color:var(--white);line-height:1;}
+.sic-mu{font-family:var(--fm);font-size:.5rem;color:var(--acc);margin-left:2px;}
+.sic-ml{font-family:var(--fm);font-size:.48rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-top:3px;}
+
+.sec-hdr{padding:10px 14px 5px;font-family:var(--fh);font-size:.52rem;font-weight:700;
+  letter-spacing:3px;color:var(--dim);text-transform:uppercase;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--b1);}
+.sec-action{font-family:var(--fm);font-size:.52rem;color:var(--acc);cursor:pointer;letter-spacing:0;}
+
+/* Gauge */
+.gauge-wrap{display:flex;justify-content:center;padding:12px 14px;}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.au{animation:fadeUp .5s cubic-bezier(.22,1,.36,1) both;}
+.au1{animation-delay:.05s}.au2{animation-delay:.1s}.au3{animation-delay:.15s}
+.au4{animation-delay:.2s}.au5{animation-delay:.25s}.au6{animation-delay:.3s}
+</style>
+</head>
+<body>
+
+<!-- Cosmic bg -->
+<div id="cosmos">
+  <canvas id="bgCvs"></canvas>
+  <div class="neb" style="width:600px;height:600px;top:-200px;left:-100px;background:radial-gradient(circle,rgba(20,40,120,.4),transparent 70%);"></div>
+  <div class="neb" style="width:400px;height:400px;top:30%;right:-80px;background:radial-gradient(circle,rgba(80,30,120,.3),transparent 70%);"></div>
+  <div class="neb" style="width:500px;height:500px;bottom:-150px;left:32%;background:radial-gradient(circle,rgba(0,60,120,.35),transparent 70%);"></div>
+</div>
+
+<!-- TOP BAR -->
+<header id="topbar">
+  <div class="tb-left">
+    <div class="logo-wrap">
+      <div class="logo-ring"></div>
+      <div class="logo-name">VIDYA<span>JYOTI</span> TRACKER</div>
+    </div>
+    <nav class="tab-nav">
+      <button class="tabn active" data-tab="1"><span class="tabn-num">01</span>Telemetry</button>
+      <button class="tabn" data-tab="2"><span class="tabn-num">02</span>Orbit Tracker</button>
+      <button class="tabn" data-tab="3"><span class="tabn-num">03</span>Dashboard</button>
+    </nav>
+    <div class="tb-meta">
+      <span class="tb-utc" id="utcClock">2024/05/01 09:10:01</span>
+      <span class="tb-sep">|</span>
+      <span id="nextPassLabel">Next Pass: 03:47</span>
+      <span class="tb-sep">|</span>
+      <span>Orbit #6607</span>
+    </div>
+  </div>
+  <div class="tb-right">
+    <div class="spill"><div class="sdot g"></div>UPLINK OK</div>
+    <div class="spill"><div class="sdot w"></div><span id="passCountdown">NEXT 03:47</span></div>
+  </div>
+</header>
+
+<!-- MAIN 3-COL -->
+<div id="app">
+
+  <!-- LEFT -->
+  <div class="lpanel">
+    <div class="psec">
+      <div class="pstitle">IA Insights</div>
+      <div class="card ic au au1">
+        <div class="card-shine"></div>
+        <div class="ic-badge pred">Prediction</div>
+        <div class="ic-title">Optimal pass tonight</div>
+        <div class="ic-body">Vidyajyoti SAT-01 pass at 21:42 UTC. Max elevation 67.3 deg. Best window this week.</div>
+        <div class="ic-sat"><div class="ic-dot" style="background:var(--grn)"></div><span class="ic-sname">Vidyajyoti SAT-01</span></div>
+      </div>
+      <div class="card ic au au2">
+        <div class="card-shine"></div>
+        <div class="ic-badge alert">Alert</div>
+        <div class="ic-title">Mumbai AQI elevated</div>
+        <div class="ic-body">Air quality index crossed 150 threshold. Sensor data may show correlation with humidity spikes.</div>
+        <div class="ic-sat"><div class="ic-dot" style="background:var(--org)"></div><span class="ic-sname">Ground Station Mumbai</span></div>
+      </div>
+      <div class="card ic au au3">
+        <div class="card-shine"></div>
+        <div class="ic-badge rec">Recommendation</div>
+        <div class="ic-title">Battery reserve nominal</div>
+        <div class="ic-body">Solar panels generating 3.4W. Battery at 89%. Payload ops can continue safely.</div>
+        <div class="ic-sat"><div class="ic-dot" style="background:var(--acc)"></div><span class="ic-sname">Vidyajyoti SAT-01</span></div>
+      </div>
+    </div>
+    <div style="padding:10px 15px 6px;border-bottom:1px solid var(--b1);">
+      <div class="pstitle">Tracked Satellites</div>
+    </div>
+    <div class="sat-list">
+      <div class="sat-row active au au1">
+        <div class="sat-ico" style="background:rgba(77,159,255,.15);">&#128752;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">VIDYAJYOTI</div><div class="sat-sub">SAT-01 &middot; 412 km</div></div>
+        <div class="sat-badge leo">LEO</div>
+      </div>
+      <div class="sat-row au au2">
+        <div class="sat-ico" style="background:rgba(0,229,160,.12);">&#128225;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">HO-68</div><div class="sat-sub">HAMSAT &middot; 7,308 km</div></div>
+        <div class="sat-badge meo">MEO</div>
+      </div>
+      <div class="sat-row au au3">
+        <div class="sat-ico" style="background:rgba(157,111,255,.12);">&#128301;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">VO-52</div><div class="sat-sub">HAMSAT &middot; 627 km</div></div>
+        <div class="sat-badge leo">LEO</div>
+      </div>
+      <div class="sat-row au au4">
+        <div class="sat-ico" style="background:rgba(255,124,58,.12);">&#127758;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">SO-50</div><div class="sat-sub">SaudiSat &middot; 703 km</div></div>
+        <div class="sat-badge leo">LEO</div>
+      </div>
+      <div class="sat-row au au5">
+        <div class="sat-ico" style="background:rgba(255,196,68,.12);">&#128246;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">AO-27</div><div class="sat-sub">AMRAD &middot; 779 km</div></div>
+        <div class="sat-badge leo">LEO</div>
+      </div>
+      <div class="sat-row au au6">
+        <div class="sat-ico" style="background:rgba(100,160,255,.1);">&#128760;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">FO-29</div><div class="sat-sub">FujiSat &middot; 887 km</div></div>
+        <div class="sat-badge leo">LEO</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div id="center">
+
+    <!-- TAB 1: TELEMETRY -->
+    <div class="tab-panel active" id="tab1">
+      <!-- Hero: big temp + hum -->
+      <div class="t1-hero">
+        <div class="t1-big" style="flex:1.2;">
+          <div class="t1-big-lbl">Temperature &mdash; Mumbai</div>
+          <div><span class="t1-big-val" id="tempHero">31.4</span><span class="t1-big-unit">&deg;C</span></div>
+          <div class="t1-big-sub">Feels like <span id="feelsLike">34.2</span>&deg;C &nbsp;&middot;&nbsp; <span id="wxCond">Partly Cloudy</span></div>
+          <canvas id="tempSparkline" height="32" style="width:100%;display:block;margin-top:10px;opacity:.7;"></canvas>
+        </div>
+        <div class="t1-big" style="flex:.7;background:rgba(0,229,160,.06);border-color:rgba(0,229,160,.2);">
+          <div class="t1-big-lbl">Humidity</div>
+          <div><span class="t1-big-val" id="humHero" style="color:var(--grn);">78</span><span class="t1-big-unit" style="color:var(--grn);">%</span></div>
+          <div class="t1-big-sub">HIGH MOISTURE</div>
+          <div style="margin-top:14px;">
+            <div style="height:6px;background:rgba(0,229,160,.1);border-radius:3px;border:1px solid rgba(0,229,160,.2);">
+              <div id="humBarHero" style="height:100%;border-radius:3px;background:linear-gradient(90deg,#00e5a0,#00c88a);width:78%;transition:width .9s ease;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sensor metrics grid -->
+      <div class="t1-grid">
+        <div class="t1-metric">
+          <div class="card-shine"></div>
+          <div class="tm-lbl">Pressure</div>
+          <div><span class="tm-val" id="presVal">1008</span><span class="tm-unit" style="color:var(--pur);">hPa</span></div>
+          <div class="tm-bar-wrap"><div class="tm-bar" id="presBar" style="width:55%;background:linear-gradient(90deg,var(--acc),var(--pur));"></div></div>
+        </div>
+        <div class="t1-metric">
+          <div class="card-shine"></div>
+          <div class="tm-lbl">Wind Speed</div>
+          <div><span class="tm-val" id="windVal">18</span><span class="tm-unit" style="color:var(--wrn);">km/h</span></div>
+          <div class="tm-bar-wrap"><div class="tm-bar" id="windBar" style="width:30%;background:linear-gradient(90deg,var(--acc),var(--wrn));"></div></div>
+        </div>
+        <div class="t1-metric">
+          <div class="card-shine"></div>
+          <div class="tm-lbl">UV Index</div>
+          <div><span class="tm-val" id="uvVal">7.2</span><span class="tm-unit" style="color:var(--pur);">/11</span></div>
+          <div class="tm-bar-wrap"><div class="tm-bar" id="uvBar" style="width:65%;background:linear-gradient(90deg,var(--pur),var(--red));"></div></div>
+        </div>
+        <div class="t1-metric">
+          <div class="card-shine"></div>
+          <div class="tm-lbl">Air Quality (AQI)</div>
+          <div><span class="tm-val" id="aqiVal">142</span><span class="tm-unit" style="color:var(--wrn);">Mod</span></div>
+          <div class="tm-bar-wrap"><div class="tm-bar" id="aqiBar" style="width:47%;background:linear-gradient(90deg,var(--grn),var(--wrn));"></div></div>
+        </div>
+      </div>
+
+      <!-- Extra stat chips -->
+      <div class="t1-extras">
+        <div class="t1-extra">
+          <div class="te-val"><span id="dewVal">24.1</span>&deg;</div>
+          <div class="te-lbl">Dew Point &deg;C</div>
+        </div>
+        <div class="t1-extra">
+          <div class="te-val"><span id="visVal">6.2</span>km</div>
+          <div class="te-lbl">Visibility</div>
+        </div>
+        <div class="t1-extra">
+          <div class="te-val"><span id="cloudVal">68</span>%</div>
+          <div class="te-lbl">Cloud Cover</div>
+        </div>
+        <div class="t1-extra">
+          <div class="te-val" style="color:var(--wrn);">06:02</div>
+          <div class="te-lbl">Sunrise</div>
+        </div>
+        <div class="t1-extra">
+          <div class="te-val" style="color:var(--org);">19:14</div>
+          <div class="te-lbl">Sunset</div>
+        </div>
+        <div class="t1-extra">
+          <div class="te-val"><span id="rainVal">2</span>%</div>
+          <div class="te-lbl">Rain Prob</div>
+        </div>
+      </div>
+
+      <!-- 24h chart -->
+      <div class="t1-chart-wrap">
+        <div class="t1-chart-title">24h Climate History &mdash; Mumbai (Dummy Data)</div>
+        <canvas id="climChart" height="90" style="width:100%;display:block;"></canvas>
+        <div style="display:flex;gap:16px;margin-top:6px;">
+          <div style="display:flex;align-items:center;gap:5px;font-family:var(--fm);font-size:.5rem;color:var(--dim);">
+            <div style="width:14px;height:2px;background:var(--org);border-radius:1px;"></div>Temp
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;font-family:var(--fm);font-size:.5rem;color:var(--dim);">
+            <div style="width:14px;height:2px;background:var(--grn);border-radius:1px;"></div>Humidity
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;font-family:var(--fm);font-size:.5rem;color:var(--dim);">
+            <div style="width:14px;height:2px;background:var(--pur);border-radius:1px;"></div>Pressure-1000
+          </div>
+        </div>
+      </div>
+
+      <!-- System health -->
+      <div style="margin-top:10px;">
+        <div style="font-family:var(--fm);font-size:.53rem;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:8px;">System Health &mdash; Vidyajyoti SAT-01</div>
+        <div class="sys-row"><span class="sysn">POWER SUBSYSTEM</span><span class="sysbadge ok">NOMINAL &middot; 3.4W</span></div>
+        <div class="sys-row"><span class="sysn">COMM &middot; UHF/VHF</span><span class="sysbadge ok">NOMINAL</span></div>
+        <div class="sys-row"><span class="sysn">ATTITUDE CONTROL</span><span class="sysbadge ok">NOMINAL</span></div>
+        <div class="sys-row"><span class="sysn">PAYLOAD SENSOR</span><span class="sysbadge warn">STANDBY</span></div>
+        <div class="sys-row"><span class="sysn">BATTERY</span><span class="sysbadge ok">89%</span></div>
+      </div>
+    </div>
+
+    <!-- TAB 2: ORBIT TRACKER -->
+    <div class="tab-panel" id="tab2">
+      <!-- View toggle -->
+      <div id="view-toggle">
+        <button class="vtbtn active" onclick="setMapMode('map',this)">World Map</button>
+        <button class="vtbtn" onclick="setMapMode('globe',this)">3D Globe</button>
+      </div>
+      <div id="mapStage">
+      <div id="worldMapLeaflet"></div>
+      <div id="globeWrap"></div>
+      <!-- Polar plot overlay -->
+      <canvas id="polarCanvas"></canvas>
+      <!-- Signal strength overlay -->
+      <canvas id="sigCanvas"></canvas>
+      <div class="sig-title" id="sigLabel">SIGNAL &middot; VHF</div>
+      <!-- Map tooltip -->
+      <div id="mtt">
+        <div class="mtt-name" id="mttName">VO-52</div>
+        <div class="mtt-row"><span class="mtt-k">Az</span><span class="mtt-v" id="mttAz">305.8&deg;</span></div>
+        <div class="mtt-row"><span class="mtt-k">El</span><span class="mtt-v" id="mttEl">24.4&deg;</span></div>
+        <div class="mtt-row"><span class="mtt-k">Alt</span><span class="mtt-v" id="mttAlt">627 km</span></div>
+        <div class="mtt-row"><span class="mtt-k">Doppler</span><span class="mtt-v" id="mttDop">+205 Hz</span></div>
+      </div>
+      </div>
+      <!-- Status bar -->
+      <div id="signalBar">
+        <div class="sb-item">Lat <span class="sb-val" id="sb-lat">22.14&deg;N</span></div>
+        <div class="sb-item">Lon <span class="sb-val" id="sb-lon">88.36&deg;E</span></div>
+        <div class="sb-item">Alt <span class="sb-val" id="sb-alt">412 km</span></div>
+        <div class="sb-item">Vel <span class="sb-val" id="sb-vel">7.662 km/s</span></div>
+        <div class="sb-item">Ground Track <span class="sb-val" id="sb-gt">Bay of Bengal</span></div>
+        <div class="sb-item">Next Pass <span class="sb-val" id="sb-np">03:47:00</span></div>
+      </div>
+      <!-- Pass table -->
+      <div id="passTable">
+        <div class="pt-header">
+          <div>SATELLITE</div><div>AZ</div><div>EL</div><div>DIR</div>
+          <div>NEXT PASS</div><div>FOOTPRINT</div><div>ALT km</div><div>DOPPLER</div><div>ORBIT</div>
+        </div>
+        <div class="pt-row sel">
+          <div class="col-sat">VIDYAJYOTI</div><div>215.5&deg;</div><div>-38.4&deg;</div>
+          <div class="col-g">&#8593;</div><div>21:42:15</div><div>HG65MA</div><div>412</div>
+          <div class="col-g">-1.2kHz</div><div>6607</div>
+        </div>
+        <div class="pt-row">
+          <div class="col-sat">VO-52</div><div>305.8&deg;</div><div>24.4&deg;</div>
+          <div class="col-g">&#8593;</div><div>22:13:10</div><div>IP80FD</div><div>627</div>
+          <div class="col-g">+205Hz</div><div>28056</div>
+        </div>
+        <div class="pt-row">
+          <div class="col-sat">SO-50</div><div>150.3&deg;</div><div>-60.1&deg;</div>
+          <div class="col-o">&#8595;</div><div>23:21:20</div><div>MD3OOF</div><div>703</div>
+          <div class="col-o">-533Hz</div><div>51597</div>
+        </div>
+        <div class="pt-row">
+          <div class="col-sat">AO-27</div><div>141.4&deg;</div><div>-17.7&deg;</div>
+          <div class="col-o">&#8595;</div><div>00:14:55</div><div>LK00CS</div><div>779</div>
+          <div class="col-o">-2.1kHz</div><div>9175</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: DASHBOARD -->
+    <div class="tab-panel" id="tab3">
+      <!-- Ticker -->
+      <div class="ticker">
+        <div class="ticker-inner">&#128752; VIDYAJYOTI SAT-01 &nbsp;&#183;&nbsp; ALT: 412km &nbsp;&#183;&nbsp; VEL: 7.662km/s &nbsp;&#183;&nbsp; TEMP: 31.4&deg;C &nbsp;&#183;&nbsp; HUM: 78% &nbsp;&#183;&nbsp; PRES: 1008hPa &nbsp;&#183;&nbsp; UV: 7.2 &nbsp;&#183;&nbsp; AQI: 142 MODERATE &nbsp;&#183;&nbsp; BATTERY: 89% &nbsp;&#183;&nbsp; UPLINK: ACTIVE &nbsp;&#183;&nbsp; NEXT PASS: 03:47 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &#128752; VIDYAJYOTI SAT-01 &nbsp;&#183;&nbsp; ALT: 412km &nbsp;&#183;&nbsp; VEL: 7.662km/s &nbsp;&#183;&nbsp; TEMP: 31.4&deg;C &nbsp;&#183;&nbsp; HUM: 78% &nbsp;&#183;&nbsp; PRES: 1008hPa &nbsp;&#183;&nbsp; UV: 7.2 &nbsp;&#183;&nbsp; AQI: 142 MODERATE &nbsp;&#183;&nbsp; BATTERY: 89% &nbsp;&#183;&nbsp; UPLINK: ACTIVE &nbsp;&#183;&nbsp; NEXT PASS: 03:47</div>
+      </div>
+
+      <!-- India map + climate chart side by side -->
+      <div class="t3-main">
+        <div class="t3-half">
+          <div class="t3-sec-title">Climate History 24h &mdash; Mumbai</div>
+          <canvas id="dashChart" height="130" style="width:100%;display:block;"></canvas>
+        </div>
+        <div class="t3-map-panel" style="margin-bottom:0;">
+          <div class="t3-map-title">&#128752; India &mdash; Climate Map</div>
+          <div id="indiaMapLeaflet"></div>
+        </div>
+      </div>
+
+      <!-- 4 stat boxes -->
+      <div class="t3-stat4">
+        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--org);">31.4&deg;</div><div class="t3-s4-lbl">Avg Temp</div></div>
+        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--grn);">78%</div><div class="t3-s4-lbl">Humidity</div></div>
+        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--pur);">1008</div><div class="t3-s4-lbl">Pressure hPa</div></div>
+        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--wrn);">7.2</div><div class="t3-s4-lbl">UV Index</div></div>
+      </div>
+
+      <!-- Launches -->
+      <div style="background:var(--glass2);border:1px solid var(--b1);border-radius:8px;overflow:hidden;margin-bottom:10px;">
+        <div style="padding:9px 13px;border-bottom:1px solid var(--b1);font-family:var(--fm);font-size:.53rem;letter-spacing:2px;color:var(--dim);text-transform:uppercase;">Upcoming Launches</div>
+        <div class="launch-item"><div class="li-date"><div class="li-mon">JUN</div><div class="li-day">28</div></div>
+          <div style="flex:1;"><div class="li-mission">SpaceX Falcon 9 &mdash; 22 Starlink</div><div class="li-rocket">Falcon 9 Block 5 &middot; Cape Canaveral</div></div>
+          <div class="li-badge li-priv">PRIVATE</div></div>
+        <div class="launch-item"><div class="li-date"><div class="li-mon">JUL</div><div class="li-day">04</div></div>
+          <div style="flex:1;"><div class="li-mission">ISRO PSLV-C60 &mdash; NVS-02</div><div class="li-rocket">PSLV-XL &middot; Satish Dhawan Space Centre</div></div>
+          <div class="li-badge li-gov">GOVT</div></div>
+        <div class="launch-item"><div class="li-date"><div class="li-mon">AUG</div><div class="li-day">12</div></div>
+          <div style="flex:1;"><div class="li-mission">China ChinaSat 6E</div><div class="li-rocket">Long March 3B &middot; Xichang</div></div>
+          <div class="li-badge li-mil">MIL</div></div>
+      </div>
+
+      <!-- Categories -->
+      <div style="background:var(--glass2);border:1px solid var(--b1);border-radius:8px;padding:12px 14px;">
+        <div class="t3-sec-title">Satellites by End-Use Category</div>
+        <div class="cat-row"><span class="cat-nm">Remote Sensing</span><div class="cat-bw"><div class="cat-b" style="width:82%;background:var(--acc);"></div></div><span class="cat-v">1,270</span></div>
+        <div class="cat-row"><span class="cat-nm">Communications</span><div class="cat-bw"><div class="cat-b" style="width:62%;background:var(--pur);"></div></div><span class="cat-v">890</span></div>
+        <div class="cat-row"><span class="cat-nm">Science / Tech</span><div class="cat-bw"><div class="cat-b" style="width:40%;background:var(--grn);"></div></div><span class="cat-v">550</span></div>
+        <div class="cat-row"><span class="cat-nm">Navigation</span><div class="cat-bw"><div class="cat-b" style="width:32%;background:var(--wrn);"></div></div><span class="cat-v">440</span></div>
+        <div class="cat-row"><span class="cat-nm">Military</span><div class="cat-bw"><div class="cat-b" style="width:24%;background:var(--org);"></div></div><span class="cat-v">340</span></div>
+      </div>
+    </div>
+
+  </div><!-- /center -->
+
+  <!-- RIGHT PANEL -->
+  <div class="rpanel">
+    <!-- Sat info -->
+    <div class="sic">
+      <div class="sic-glow"></div>
+      <div class="sic-code">SAT-01 &middot; LEO &middot; ISRO STUDENT PROGRAM</div>
+      <div class="sic-name">VIDYAJYOTI<br>SAT-01</div>
+      <div class="sic-grid">
+        <div class="sic-m"><div><span class="sic-mv" id="rm-alt">412</span><span class="sic-mu">KM</span></div><div class="sic-ml">Altitude</div></div>
+        <div class="sic-m"><div><span class="sic-mv" id="rm-vel">7.3</span><span class="sic-mu">km/s</span></div><div class="sic-ml">Velocity</div></div>
+        <div class="sic-m"><div><span class="sic-mv" id="rm-per">92</span><span class="sic-mu">min</span></div><div class="sic-ml">Period</div></div>
+        <div class="sic-m"><div><span class="sic-mv">97.4</span><span class="sic-mu">deg</span></div><div class="sic-ml">Inclination</div></div>
+      </div>
+      <div style="margin-top:8px;padding:8px 10px;background:var(--glass);border:1px solid var(--b1);border-radius:6px;">
+        <div style="font-family:var(--fm);font-size:.48rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Purpose</div>
+        <div style="font-family:var(--fb);font-size:.65rem;color:var(--txt);">Earth Observation &middot; Climate Monitoring &middot; Amateur Radio</div>
+      </div>
+    </div>
+
+    <!-- Gauge -->
+    <div class="sec-hdr">Signal Quality <span class="sec-action">Details</span></div>
+    <div class="gauge-wrap"><canvas id="gaugeCanvas" width="180" height="90"></canvas></div>
+
+    <!-- Upcoming launches -->
+    <div class="sec-hdr">Upcoming Launches <span class="sec-action">All</span></div>
+    <div class="launch-item"><div class="li-date"><div class="li-mon">JUN</div><div class="li-day">28</div></div>
+      <div style="flex:1;"><div class="li-mission">SpaceX &mdash; Starlink</div><div class="li-rocket">Falcon 9 &middot; Cape Canaveral</div></div>
+      <div class="li-badge li-priv">PRIV</div></div>
+    <div class="launch-item"><div class="li-date"><div class="li-mon">JUL</div><div class="li-day">04</div></div>
+      <div style="flex:1;"><div class="li-mission">ISRO PSLV-C60</div><div class="li-rocket">PSLV-XL &middot; Satish Dhawan</div></div>
+      <div class="li-badge li-gov">GOVT</div></div>
+    <div class="launch-item"><div class="li-date"><div class="li-mon">AUG</div><div class="li-day">12</div></div>
+      <div style="flex:1;"><div class="li-mission">ChinaSat 6E</div><div class="li-rocket">Long March 3B &middot; Xichang</div></div>
+      <div class="li-badge li-mil">MIL</div></div>
+
+    <!-- Categories -->
+    <div class="sec-hdr">By Category</div>
+    <div style="padding:8px 12px;">
+      <div class="cat-row"><span class="cat-nm">Remote Sensing</span><div class="cat-bw"><div class="cat-b" style="width:82%;background:var(--acc);"></div></div><span class="cat-v">1,270</span></div>
+      <div class="cat-row"><span class="cat-nm">Comms</span><div class="cat-bw"><div class="cat-b" style="width:62%;background:var(--pur);"></div></div><span class="cat-v">890</span></div>
+      <div class="cat-row"><span class="cat-nm">Science</span><div class="cat-bw"><div class="cat-b" style="width:40%;background:var(--grn);"></div></div><span class="cat-v">550</span></div>
+      <div class="cat-row"><span class="cat-nm">Navigation</span><div class="cat-bw"><div class="cat-b" style="width:32%;background:var(--wrn);"></div></div><span class="cat-v">440</span></div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+/* ====================================================
+   UTILITIES
+==================================================== */
+function el(id){return document.getElementById(id);}
+function pad(v){return String(v).padStart(2,'0');}
+function nudge(v,d,mn,mx){return Math.min(mx,Math.max(mn,+(v+(Math.random()-.5)*d).toFixed(1)));}
+
+/* UTC clock */
+function tickClock(){
+  var n=new Date();
+  var s=n.getUTCFullYear()+'/'+pad(n.getUTCMonth()+1)+'/'+pad(n.getUTCDate())+' '+pad(n.getUTCHours())+':'+pad(n.getUTCMinutes())+':'+pad(n.getUTCSeconds());
+  el('utcClock').textContent=s;
+}
+setInterval(tickClock,1000);tickClock();
+
+/* ====================================================
+   STARFIELD BACKGROUND
+==================================================== */
+(function(){
+  var c=el('bgCvs');
+  c.width=window.innerWidth;c.height=window.innerHeight;
+  var ctx=c.getContext('2d');
+  var stars=[];
+  for(var i=0;i<280;i++){stars.push({x:Math.random()*c.width,y:Math.random()*c.height,r:Math.random()*1.1+.2,a:Math.random(),da:(Math.random()-.5)*.006+.002,blue:Math.random()>.8});}
+  (function draw(){
+    ctx.clearRect(0,0,c.width,c.height);
+    stars.forEach(function(s){s.a+=s.da;if(s.a>1||s.a<0)s.da*=-1;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=(s.blue?'rgba(140,190,255,':'rgba(255,255,255,')+s.a+')';ctx.fill();});
+    requestAnimationFrame(draw);
+  })();
+})();
+
+/* ====================================================
+   TAB SWITCHING
+==================================================== */
+var activeTab=1;
+document.querySelectorAll('.tabn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var t=parseInt(btn.getAttribute('data-tab'));
+    document.querySelectorAll('.tabn').forEach(function(b){b.classList.remove('active');});
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
+    el('tab'+t).classList.add('active');
+    activeTab=t;
+    if(t===2&&!worldMapReady)initWorldMap();
+    if(t===3&&!dashChartReady)initDashChart();
+    if(t===2&&worldLeaflet)setTimeout(function(){worldLeaflet.invalidateSize();},120);
+    if(t===3&&indiaLeaflet)setTimeout(function(){indiaLeaflet.invalidateSize();},120);
+  });
+});
+document.querySelectorAll('.sat-row').forEach(function(r){
+  r.addEventListener('click',function(){document.querySelectorAll('.sat-row').forEach(function(x){x.classList.remove('active');});r.classList.add('active');});
+});
+document.querySelectorAll('.pt-row').forEach(function(r){
+  r.addEventListener('click',function(){document.querySelectorAll('.pt-row').forEach(function(x){x.classList.remove('sel');});r.classList.add('sel');});
+});
+
+/* ====================================================
+   DUMMY SENSOR DATA (Tab 1)
+==================================================== */
+var D={temp:31.4,hum:78,pres:1008,wind:18,uv:7.2,aqi:142,dew:24.1,vis:6.2,cloud:68,rain:2,age:0};
+var wxConds=['Partly Cloudy','Mostly Sunny','Overcast','Hazy','Humid'];
+var tempHistory=[];
+for(var ii=0;ii<24;ii++)tempHistory.push(26+Math.sin(ii/5)*5+Math.random()*2);
+
+function updateSensors(){
+  D.temp=nudge(D.temp,.4,26,38);D.hum=nudge(D.hum,1.5,55,95);
+  D.pres=nudge(D.pres,1,995,1020);D.wind=nudge(D.wind,1.5,5,45);
+  D.uv=nudge(D.uv,.3,0,11);D.aqi=nudge(D.aqi,4,50,200);
+  D.dew=nudge(D.dew,.3,18,30);D.vis=nudge(D.vis,.2,2,12);
+  D.cloud=nudge(D.cloud,3,10,100);D.rain=nudge(D.rain,1,0,100);
+  tempHistory.push(D.temp);if(tempHistory.length>48)tempHistory.shift();
+
+  function s(id,v){var e=el(id);if(e)e.textContent=v;}
+  function sw(id,pct){var e=el(id);if(e)e.style.width=Math.max(2,Math.min(100,pct))+'%';}
+
+  s('tempHero',D.temp.toFixed(1));s('feelsLike',(D.temp+D.hum*.04).toFixed(1));
+  s('wxCond',wxConds[Math.floor(Math.random()*2)]);
+  s('humHero',Math.round(D.hum));el('humBarHero').style.width=Math.round(D.hum)+'%';
+  s('presVal',Math.round(D.pres));sw('presBar',((D.pres-990)/40*100));
+  s('windVal',Math.round(D.wind));sw('windBar',(D.wind/60*100));
+  s('uvVal',D.uv.toFixed(1));sw('uvBar',(D.uv/11*100));
+  s('aqiVal',Math.round(D.aqi));sw('aqiBar',(D.aqi/300*100));
+  s('dewVal',D.dew.toFixed(1));s('visVal',D.vis.toFixed(1));
+  s('cloudVal',Math.round(D.cloud));s('rainVal',Math.round(D.rain));
+  D.age=0;
+  drawTempSparkline();
+  updateIndiaCityPopups();
+}
+setInterval(updateSensors,3500);
+
+/* Temperature sparkline */
+function drawTempSparkline(){
+  var c=el('tempSparkline');if(!c)return;
+  c.width=c.parentElement.offsetWidth;c.height=32;
+  var ctx=c.getContext('2d');var W=c.width,H=c.height;
+  ctx.clearRect(0,0,W,H);
+  var mn=Math.min.apply(null,tempHistory),mx=Math.max.apply(null,tempHistory);
+  var grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'rgba(255,124,58,.5)');grad.addColorStop(1,'rgba(255,124,58,0)');
+  ctx.beginPath();
+  tempHistory.forEach(function(v,i){
+    var x=i/(tempHistory.length-1)*W,y=H-(v-mn)/(mx-mn+.1)*H*.9;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle='rgba(255,124,58,.8)';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+}
+drawTempSparkline();
+
+/* 24h climate chart (Tab 1) */
+(function(){
+  var c=el('climChart');c.width=c.parentElement.offsetWidth;c.height=90;
+  var ctx=c.getContext('2d');
+  var N=24,labels=[],T=[],H2=[],P2=[];
+  for(var i=0;i<N;i++){labels.push(String(23-i).padStart(2,'0')+':00');T.push(26+Math.sin(i/5)*5+Math.random()*2);H2.push(65+Math.sin(i/4+1)*15+Math.random()*4);P2.push(8+Math.cos(i/5)*6+Math.random()*3);}
+  function drawLine(data,color,fill){
+    var mn=Math.min.apply(null,data),mx=Math.max.apply(null,data);
+    var W=c.width,H=c.height,PL=4,PB=16;
+    var tx=function(i){return PL+i/(N-1)*(W-PL*2);};
+    var ty=function(v){return 4+(1-(v-mn)/(mx-mn+.1))*(H-PB-4);};
+    ctx.beginPath();data.forEach(function(v,i){i===0?ctx.moveTo(tx(i),ty(v)):ctx.lineTo(tx(i),ty(v));});
+    ctx.strokeStyle=color;ctx.lineWidth=1.8;ctx.stroke();
+    ctx.lineTo(tx(N-1),H-PB);ctx.lineTo(tx(0),H-PB);ctx.closePath();
+    var gr=ctx.createLinearGradient(0,4,0,H-PB);gr.addColorStop(0,fill);gr.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=gr;ctx.fill();
+  }
+  function draw(){
+    var W=c.width,H=c.height;ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle='rgba(100,160,255,.06)';ctx.lineWidth=.5;
+    for(var j=0;j<3;j++){var yy=4+(j/3)*(H-20);ctx.beginPath();ctx.moveTo(0,yy);ctx.lineTo(W,yy);ctx.stroke();}
+    drawLine(T,'rgba(255,124,58,.85)','rgba(255,124,58,.1)');
+    drawLine(H2,'rgba(0,229,160,.75)','rgba(0,229,160,.08)');
+    drawLine(P2,'rgba(157,111,255,.7)','rgba(157,111,255,.06)');
+    ctx.fillStyle='rgba(100,160,255,.3)';ctx.font='7px JetBrains Mono,monospace';
+    [0,6,12,18,23].forEach(function(i){ctx.fillText(labels[i],4+i/(N-1)*(W-8)-8,H-3);});
+  }
+  c.width=c.parentElement.offsetWidth||400;draw();
+})();
+
+/* ====================================================
+   ORBIT TRACKER: SAT DATA + INTERACTIVE MAPS
+==================================================== */
+var SATS2=[
+  {name:'VIDYAJYOTI',lon:88.36,lat:22.14,color:'#4d9fff',alt:412,dop:'+3.1kHz',track:0,speed:.28},
+  {name:'VO-52',lon:-20,lat:15,color:'#9d6fff',alt:627,dop:'+205Hz',track:55,speed:.22},
+  {name:'HO-68',lon:140,lat:-10,color:'#00e5a0',alt:7308,dop:'-1.6kHz',track:120,speed:.12},
+  {name:'SO-50',lon:60,lat:35,color:'#ff7c3a',alt:703,dop:'-533Hz',track:85,speed:.2},
+  {name:'AO-27',lon:-100,lat:-20,color:'#ffc444',alt:779,dop:'-2.1kHz',track:200,speed:.18},
+  {name:'FO-29',lon:170,lat:30,color:'#ff4466',alt:887,dop:'+440Hz',track:160,speed:.15},
+];
+var satAnimT=0;
+var worldMapReady=false,mapMode='map';
+var worldLeaflet=null,satLayers={},globeInstance=null,globeReady=false;
+var indiaLeaflet=null,indiaCityMarkers={};
+var DARK_TILES='https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+var TILE_ATTR='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>';
+
+/* Orbit params dummy updater */
+var OR={lat:22.14,lon:88.36,alt:412.6,vel:7.662,dop:3.12};
+var GTS=['Bay of Bengal','Tamil Nadu Coast','Indian Ocean','Arabian Sea','Bay of Bengal'];
+var gti=0;
+var cdSec=13620;
+
+setInterval(function(){
+  OR.lat=nudge(OR.lat,.15,-85,85);
+  OR.lon=+(OR.lon+.4+(Math.random()-.5)*.1).toFixed(2);if(OR.lon>180)OR.lon=-180;
+  OR.alt=nudge(OR.alt,.5,400,425);OR.vel=nudge(OR.vel,.002,7.6,7.72);OR.dop=nudge(OR.dop,.15,-5,5);
+  gti=(gti+1)%GTS.length;
+  var deg='\u00b0';
+  function s2(id,v){var e=el(id);if(e)e.textContent=v;}
+  s2('sb-lat',Math.abs(OR.lat).toFixed(2)+deg+(OR.lat>=0?'N':'S'));
+  s2('sb-lon',Math.abs(OR.lon).toFixed(2)+deg+(OR.lon>=0?'E':'W'));
+  s2('sb-alt',OR.alt.toFixed(1)+' km');
+  s2('sb-vel',OR.vel.toFixed(3)+' km/s');
+  s2('sb-gt',GTS[gti]);
+  s2('rm-alt',Math.round(OR.alt));
+  s2('rm-vel',OR.vel.toFixed(1));
+},3500);
+setInterval(function(){
+  if(cdSec>0)cdSec--;
+  var h=Math.floor(cdSec/3600),m=Math.floor((cdSec%3600)/60),ss=cdSec%60;
+  var st=pad(m)+':'+pad(ss);
+  var e1=el('sb-np');if(e1)e1.textContent=pad(h)+':'+pad(m)+':'+pad(ss);
+  var e2=el('passCountdown');if(e2)e2.textContent='NEXT '+st;
+  var e3=el('nextPassLabel');if(e3)e3.textContent='Next Pass: '+st;
+},1000);
+
+function buildTrack(sat,offset){
+  var pts=[],sp=sat.speed;
+  for(var lo=-180;lo<=180;lo+=3){
+    var la=25*Math.sin((lo+sat.track+satAnimT*50*sp+offset)*Math.PI/90);
+    pts.push([la,lo]);
+  }
+  return pts;
+}
+function satPosition(sat){
+  var sp=sat.speed;
+  var lon=((sat.track+satAnimT*50*sp)%360)-180;
+  var lat=25*Math.sin(lon*Math.PI/90);
+  return{lat:lat,lon:lon};
+}
+function footprintRadiusM(sat){return Math.min(2200000,350000+sat.alt*2800);}
+
+function initWorldMap(){
+  if(worldMapReady)return;
+  if(typeof L==='undefined'){console.error('Leaflet failed to load. Use a local server and network.');return;}
+  worldMapReady=true;
+  var container=el('worldMapLeaflet');
+  worldLeaflet=L.map(container,{
+    zoomControl:true,
+    attributionControl:true,
+    worldCopyJump:true,
+    minZoom:2,
+    maxZoom:10
+  }).setView([20,80],3);
+  L.tileLayer(DARK_TILES,{attribution:TILE_ATTR,subdomains:'abcd',maxZoom:19}).addTo(worldLeaflet);
+  L.circleMarker([19.08,72.88],{
+    radius:9,color:'#ff7c3a',fillColor:'#ff7c3a',fillOpacity:.95,weight:2
+  }).addTo(worldLeaflet).bindPopup('<b>GS MUMBAI</b><br>Ground Station &middot; Vidyajyoti');
+  L.circle([19.08,72.88],{radius:800000,color:'#ff7c3a',fillColor:'#ff7c3a',fillOpacity:.04,weight:1,dashArray:'6 4'}).addTo(worldLeaflet);
+  SATS2.forEach(function(sat){
+    var prevTrack=L.polyline([],{color:sat.color,weight:1,opacity:.28,dashArray:'4 8'}).addTo(worldLeaflet);
+    var trackLine=L.polyline([],{color:sat.color,weight:2.2,opacity:.75,dashArray:'8 5'}).addTo(worldLeaflet);
+    var footprint=L.circle([0,0],{radius:footprintRadiusM(sat),color:sat.color,fillColor:sat.color,fillOpacity:.05,weight:1,dashArray:'4 6'}).addTo(worldLeaflet);
+    var marker=L.circleMarker([0,0],{
+      radius:sat.name==='VIDYAJYOTI'?7:5,
+      color:sat.color,fillColor:sat.color,fillOpacity:1,weight:2
+    }).addTo(worldLeaflet);
+    marker.bindPopup(function(){
+      var p=satPosition(sat);
+      return'<b>'+sat.name+'</b><br>Lat '+p.lat.toFixed(2)+'&deg; Lon '+p.lon.toFixed(2)+'&deg;<br>Alt '+sat.alt+' km &middot; '+sat.dop;
+    });
+    satLayers[sat.name]={sat:sat,prevTrack:prevTrack,trackLine:trackLine,marker:marker,footprint:footprint};
+  });
+  function resizeMaps(){
+    if(worldLeaflet)worldLeaflet.invalidateSize();
+    resizeGlobe();
+  }
+  window.addEventListener('resize',resizeMaps);
+  function tickOrbitMaps(){
+    if(activeTab===2)satAnimT+=.003;
+    if(activeTab===2&&mapMode==='map'&&worldLeaflet){
+      SATS2.forEach(function(sat){
+        var Lyr=satLayers[sat.name];
+        Lyr.prevTrack.setLatLngs(buildTrack(sat,-.5));
+        Lyr.trackLine.setLatLngs(buildTrack(sat,0));
+        var pos=satPosition(sat);
+        Lyr.marker.setLatLng([pos.lat,pos.lon]);
+        Lyr.footprint.setLatLng([pos.lat,pos.lon]);
+        Lyr.footprint.setRadius(footprintRadiusM(sat));
+      });
+    }
+    if(activeTab===2&&mapMode==='globe'&&globeInstance)updateGlobeData();
+    requestAnimationFrame(tickOrbitMaps);
+  }
+  tickOrbitMaps();
+  setTimeout(resizeMaps,150);
+}
+
+function resizeGlobe(){
+  if(!globeInstance||!globeReady)return;
+  var gw=el('globeWrap');
+  if(!gw||gw.offsetWidth<10)return;
+  globeInstance.width(gw.offsetWidth).height(gw.offsetHeight);
+}
+
+function initGlobe(){
+  if(globeReady)return;
+  if(typeof Globe==='undefined'){console.error('Globe.gl failed to load.');return;}
+  globeReady=true;
+  var wrap=el('globeWrap');
+  globeInstance=Globe()
+    .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
+    .backgroundColor('rgba(6,10,18,0)')
+    .showAtmosphere(true)
+    .atmosphereColor('#4d9fff')
+    .atmosphereAltitude(.18)
+    .pointAltitude(function(d){return d.name==='VIDYAJYOTI'?0.12:.07;})
+    .pointRadius(function(d){return d.name==='GS MUMBAI'?0.35:.28;})
+    .pointColor('color')
+    .pointLabel('label')
+    .arcAltitude(.06)
+    .arcStroke(.35)
+    .arcColor('color')
+    (wrap);
+  globeInstance.controls().autoRotate=true;
+  globeInstance.controls().autoRotateSpeed=.35;
+  resizeGlobe();
+  updateGlobeData();
+}
+
+function updateGlobeData(){
+  if(!globeInstance)return;
+  var points=[{lat:19.08,lng:72.88,name:'GS MUMBAI',color:'#ff7c3a',label:'<b>GS MUMBAI</b>'}];
+  SATS2.forEach(function(sat){
+    var p=satPosition(sat);
+    points.push({lat:p.lat,lng:p.lon,name:sat.name,color:sat.color,label:'<b>'+sat.name+'</b><br>'+sat.alt+' km'});
+  });
+  globeInstance.pointsData(points);
+  var arcs=[];
+  SATS2.forEach(function(sat){
+    var pts=buildTrack(sat,0);
+    for(var i=0;i<pts.length-1;i+=12){
+      arcs.push({
+        startLat:pts[i][0],startLng:pts[i][1],
+        endLat:pts[i+1][0],endLng:pts[i+1][1],
+        color:sat.color
+      });
+    }
+  });
+  globeInstance.arcsData(arcs);
+}
+
+function setMapMode(mode,btn){
+  document.querySelectorAll('.vtbtn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  mapMode=mode;
+  var wl=el('worldMapLeaflet'),gw=el('globeWrap');
+  if(mode==='globe'){
+    wl.style.display='none';
+    gw.style.display='block';
+    initGlobe();
+    setTimeout(resizeGlobe,80);
+  }else{
+    gw.style.display='none';
+    wl.style.display='block';
+    if(worldLeaflet)setTimeout(function(){worldLeaflet.invalidateSize();},80);
+  }
+}
+
+/* \u2500\u2500 Signal Strength \u2500\u2500 */
+(function(){
+  var c=el('sigCanvas'),W=200,H=72;c.width=W;c.height=H;
+  var ctx=c.getContext('2d'),history2=[];
+  for(var i=0;i<60;i++)history2.push(40+Math.random()*40+Math.sin(i*.3)*18);
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle='rgba(77,159,255,.07)';ctx.lineWidth=.5;
+    for(var yy=H*.25;yy<H;yy+=H*.25){ctx.beginPath();ctx.moveTo(0,yy);ctx.lineTo(W,yy);ctx.stroke();}
+    history2.push(40+Math.random()*40+Math.sin(Date.now()*.001)*18);if(history2.length>60)history2.shift();
+    var gr=ctx.createLinearGradient(0,0,0,H);gr.addColorStop(0,'rgba(77,159,255,.65)');gr.addColorStop(1,'rgba(77,159,255,0)');
+    ctx.beginPath();history2.forEach(function(v,i){var x=i/59*W,y=H-v/100*H;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fillStyle=gr;ctx.fill();
+    ctx.beginPath();history2.forEach(function(v,i){var x=i/59*W,y=H-v/100*H;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.strokeStyle='rgba(77,159,255,.85)';ctx.lineWidth=1.2;ctx.stroke();
+    ctx.beginPath();history2.forEach(function(v,i){var x=i/59*W,y=H-(v*.55+14)/100*H;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.strokeStyle='rgba(157,111,255,.5)';ctx.lineWidth=1;ctx.stroke();
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* \u2500\u2500 Polar \u2500\u2500 */
+(function(){
+  var c=el('polarCanvas');c.width=130;c.height=130;
+  var ctx=c.getContext('2d'),sa=0;
+  function draw(){
+    var W=130,H=130,cx=65,cy=65,R=55;
+    ctx.clearRect(0,0,W,H);
+    [1,.67,.33].forEach(function(f,i){ctx.beginPath();ctx.arc(cx,cy,R*f,0,Math.PI*2);ctx.strokeStyle='rgba(100,160,255,'+(0.14+i*.04)+')';ctx.lineWidth=.8;ctx.stroke();});
+    ctx.strokeStyle='rgba(100,160,255,.1)';ctx.lineWidth=.5;
+    ctx.beginPath();ctx.moveTo(cx-R,cy);ctx.lineTo(cx+R,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,cy-R);ctx.lineTo(cx,cy+R);ctx.stroke();
+    ctx.fillStyle='rgba(100,160,255,.45)';ctx.font='7px JetBrains Mono,monospace';ctx.textAlign='center';
+    ctx.fillText('N',cx,9);ctx.fillText('S',cx,H-2);ctx.fillText('W',7,cy+3);ctx.fillText('E',W-3,cy+3);ctx.textAlign='left';
+    sa+=.014;
+    var el2=R*.58*Math.abs(Math.sin(sa)),px=cx+el2*Math.sin(sa),py=cy-el2*Math.cos(sa);
+    ctx.beginPath();for(var t=0;t<28;t++){var ta=sa-t*.014,te=R*.58*Math.abs(Math.sin(ta));var tx=cx+te*Math.sin(ta),ty=cy-te*Math.cos(ta);t===0?ctx.moveTo(tx,ty):ctx.lineTo(tx,ty);}
+    ctx.strokeStyle='rgba(77,159,255,.38)';ctx.lineWidth=1;ctx.stroke();
+    ctx.shadowColor='#4d9fff';ctx.shadowBlur=8;ctx.beginPath();ctx.arc(px,py,3.5,0,Math.PI*2);ctx.fillStyle='#4d9fff';ctx.fill();ctx.shadowBlur=0;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ====================================================
+   DASHBOARD (Tab 3): India Map + Charts
+==================================================== */
+var dashChartReady=false;
+function initDashChart(){
+  dashChartReady=true;
+  /* Climate chart (Tab 3) */
+  var c=el('dashChart');if(!c)return;
+  c.width=c.parentElement.offsetWidth||300;c.height=130;
+  var ctx=c.getContext('2d'),N=24,T2=[],H3=[],P3=[];
+  for(var i=0;i<N;i++){T2.push(26+Math.sin(i/5)*5+Math.random()*2);H3.push(65+Math.sin(i/4+1)*15+Math.random()*4);P3.push(8+Math.cos(i/5)*6+Math.random()*3);}
+  function drawLine2(data,color,fill){
+    var mn=Math.min.apply(null,data),mx=Math.max.apply(null,data),W=c.width,H=c.height;
+    var tx=function(i){return 2+i/(N-1)*(W-4);},ty=function(v){return 4+(1-(v-mn)/(mx-mn+.1))*(H-18);};
+    ctx.beginPath();data.forEach(function(v,i){i===0?ctx.moveTo(tx(i),ty(v)):ctx.lineTo(tx(i),ty(v));});
+    ctx.strokeStyle=color;ctx.lineWidth=1.8;ctx.stroke();
+    ctx.lineTo(tx(N-1),H-14);ctx.lineTo(tx(0),H-14);ctx.closePath();
+    var gr2=ctx.createLinearGradient(0,4,0,H-14);gr2.addColorStop(0,fill);gr2.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=gr2;ctx.fill();
+  }
+  ctx.clearRect(0,0,c.width,c.height);
+  ctx.strokeStyle='rgba(100,160,255,.06)';ctx.lineWidth=.5;
+  for(var j=0;j<3;j++){var yy=4+(j/3)*(c.height-18);ctx.beginPath();ctx.moveTo(0,yy);ctx.lineTo(c.width,yy);ctx.stroke();}
+  drawLine2(T2,'rgba(255,124,58,.85)','rgba(255,124,58,.1)');
+  drawLine2(H3,'rgba(0,229,160,.75)','rgba(0,229,160,.08)');
+  drawLine2(P3,'rgba(157,111,255,.7)','rgba(157,111,255,.06)');
+
+  /* India map */
+  initIndiaMap();
+}
+
+var INDIA_CITIES=[
+  {n:'Mumbai',lon:72.88,lat:19.08,t:'31.4C',h:'78%',c:'#ff7c3a'},
+  {n:'Delhi',lon:77.21,lat:28.61,t:'38.2C',h:'42%',c:'#ffc444'},
+  {n:'Chennai',lon:80.27,lat:13.08,t:'33.1C',h:'84%',c:'#00e5a0'},
+  {n:'Kolkata',lon:88.36,lat:22.57,t:'34.5C',h:'76%',c:'#9d6fff'},
+  {n:'Bengaluru',lon:77.59,lat:12.97,t:'27.8C',h:'68%',c:'#4d9fff'},
+  {n:'Hyderabad',lon:78.47,lat:17.38,t:'32.0C',h:'55%',c:'#ff7c3a'},
+];
+
+var indiaMapReady=false;
+function cityPopup(ci){
+  return'<b>'+ci.n+'</b><br>'+ci.t+' &middot; '+ci.h;
+}
+function updateIndiaCityPopups(){
+  if(!indiaCityMarkers.Mumbai)return;
+  var m=indiaCityMarkers.Mumbai;
+  m.setPopupContent('<b>Mumbai</b><br>'+D.temp.toFixed(1)+'&deg;C &middot; '+Math.round(D.hum)+'%');
+}
+function initIndiaMap(){
+  if(indiaMapReady)return;
+  indiaMapReady=true;
+  var container=el('indiaMapLeaflet');
+  if(!container||typeof L==='undefined')return;
+  indiaLeaflet=L.map(container,{
+    zoomControl:true,
+    attributionControl:true,
+    scrollWheelZoom:true,
+    minZoom:4,
+    maxZoom:8
+  }).fitBounds([[6.5,68],[35.5,97.5]],{padding:[14,14]});
+  L.tileLayer(DARK_TILES,{attribution:TILE_ATTR,subdomains:'abcd',maxZoom:12}).addTo(indiaLeaflet);
+  INDIA_CITIES.forEach(function(ci){
+    var m=L.circleMarker([ci.lat,ci.lon],{
+      radius:8,color:ci.c,fillColor:ci.c,fillOpacity:.92,weight:2
+    }).addTo(indiaLeaflet);
+    m.bindPopup(cityPopup(ci));
+    indiaCityMarkers[ci.n]=m;
+  });
+  L.circleMarker([22.14,88.36],{
+    radius:6,color:'#4d9fff',fillColor:'#4d9fff',fillOpacity:1,weight:2
+  }).addTo(indiaLeaflet).bindPopup('<b>Vidyajyoti SAT-01</b><br>Ground track over India');
+  setTimeout(function(){if(indiaLeaflet)indiaLeaflet.invalidateSize();},200);
+}
+
+/* ====================================================
+   GAUGE
+==================================================== */
+(function(){
+  var c=el('gaugeCanvas');c.width=180;c.height=90;
+  var ctx=c.getContext('2d'),val=0,target=78;
+  function draw(){
+    val+=(target-val)*.04;
+    var cx=90,cy=85,R=68;
+    ctx.clearRect(0,0,180,90);
+    ctx.beginPath();ctx.arc(cx,cy,R,Math.PI,0);ctx.strokeStyle='rgba(100,160,255,.1)';ctx.lineWidth=10;ctx.stroke();
+    var gr3=ctx.createLinearGradient(cx-R,cy,cx+R,cy);
+    gr3.addColorStop(0,'#4d9fff');gr3.addColorStop(.5,'#00e5a0');gr3.addColorStop(1,'#00e5a0');
+    ctx.beginPath();ctx.arc(cx,cy,R,Math.PI,Math.PI+val/100*Math.PI);
+    ctx.strokeStyle=gr3;ctx.lineWidth=10;ctx.lineCap='round';ctx.stroke();
+    ctx.fillStyle='#e8f0ff';ctx.font='bold 18px Syne,sans-serif';ctx.textAlign='center';ctx.fillText(Math.round(val)+'%',cx,cy-12);
+    ctx.fillStyle='rgba(100,160,255,.45)';ctx.font='6.5px JetBrains Mono,monospace';ctx.fillText('SIGNAL QUALITY',cx,cy+2);
+    ctx.textAlign='left';
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ====================================================
+   WORLD MAP INIT ON LOAD ONLY IF TAB2 IS DEFAULT
+==================================================== */
+/* World map auto-init when tab 2 is clicked handled above */
+/* Pass table interactions */
+document.querySelectorAll('.pt-row').forEach(function(r){r.addEventListener('click',function(){document.querySelectorAll('.pt-row').forEach(function(x){x.classList.remove('sel');});r.classList.add('sel');});});
+document.querySelectorAll('.sat-row').forEach(function(r){r.addEventListener('click',function(){document.querySelectorAll('.sat-row').forEach(function(x){x.classList.remove('active');});r.classList.add('active');});});
+</script>
+</body>
+</html>

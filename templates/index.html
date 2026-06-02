@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vidyajyoti Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script src="https://unpkg.com/globe.gl@2.32.1/dist/globe.gl.min.js"></script>
+</head>
+<body>
+<!-- Cosmic bg -->
+<div id="cosmos">
+  <canvas id="bgCvs"></canvas>
+  <div class="neb" style="width:600px;height:600px;top:-200px;left:-100px;background:radial-gradient(circle,rgba(20,40,120,.4),transparent 70%);"></div>
+  <div class="neb" style="width:400px;height:400px;top:30%;right:-80px;background:radial-gradient(circle,rgba(80,30,120,.3),transparent 70%);"></div>
+  <div class="neb" style="width:500px;height:500px;bottom:-150px;left:32%;background:radial-gradient(circle,rgba(0,60,120,.35),transparent 70%);"></div>
+</div>
+
+<!-- TOP BAR -->
+<header id="topbar">
+  <div class="tb-left">
+    <div class="logo-wrap">
+      <div class="logo-ring"></div>
+      <div class="logo-name">VIDYA<span>JYOTI</span> TRACKER</div>
+    </div>
+    <nav class="tab-nav">
+      <button class="tabn active" data-tab="1"><span class="tabn-num">01</span>Telemetry</button>
+      <button class="tabn" data-tab="2"><span class="tabn-num">02</span>Orbit Tracker</button>
+      <button class="tabn" data-tab="3"><span class="tabn-num">03</span>Dashboard</button>
+    </nav>
+    <div class="tb-meta">
+      <span class="tb-utc" id="utcClock">2024/05/01 09:10:01</span>
+      <span class="tb-sep">|</span>
+      <span id="nextPassLabel">Next Pass: 03:47</span>
+      <span class="tb-sep">|</span>
+      <span>Orbit #6607</span>
+    </div>
+  </div>
+  <div class="tb-right">
+    <div class="spill"><div class="sdot g"></div>UPLINK OK</div>
+    <div class="spill"><div class="sdot w"></div><span id="passCountdown">NEXT 03:47</span></div>
+  </div>
+</header>
+
+<!-- MAIN 3-COL -->
+<div id="app">
+
+  <!-- LEFT -->
+  <div class="lpanel">
+    <div class="psec">
+      <div class="pstitle">IA Insights</div>
+      <div class="card ic au au1">
+        <div class="card-shine"></div>
+        <div class="ic-badge pred">Prediction</div>
+        <div class="ic-title">Optimal pass tonight</div>
+        <div class="ic-body">Vidyajyoti SAT-01 pass at 21:42 UTC. Max elevation 67.3 deg. Best window this week.</div>
+        <div class="ic-sat"><div class="ic-dot" style="background:var(--grn)"></div><span class="ic-sname">Vidyajyoti SAT-01</span></div>
+      </div>
+      <div class="card ic au au2">
+        <div class="card-shine"></div>
+        <div class="ic-badge alert">Alert</div>
+        <div class="ic-title">Mumbai AQI elevated</div>
+        <div class="ic-body">Air quality index crossed 150 threshold. Sensor data may show correlation with humidity spikes.</div>
+        <div class="ic-sat"><div class="ic-dot" style="background:var(--org)"></div><span class="ic-sname">Ground Station Mumbai</span></div>
+      </div>
+      <div class="card ic au au3">
+        <div class="card-shine"></div>
+        <div class="ic-badge rec">Recommendation</div>
+        <div class="ic-title">Battery reserve nominal</div>
+        <div class="ic-body">Solar panels generating 3.4W. Battery at 89%. Payload ops can continue safely.</div>
+        <div class="ic-sat"><div class="ic-dot" style="background:var(--acc)"></div><span class="ic-sname">Vidyajyoti SAT-01</span></div>
+      </div>
+    </div>
+    <div style="padding:10px 15px 6px;border-bottom:1px solid var(--b1);">
+      <div class="pstitle">Tracked Satellites</div>
+    </div>
+    <div class="sat-list">
+      <div class="sat-row active au au1">
+        <div class="sat-ico" style="background:rgba(77,159,255,.15);">&#128752;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">VIDYAJYOTI</div><div class="sat-sub">SAT-01 &middot; 412 km</div></div>
+        <div class="sat-badge leo">LEO</div>
+      </div>
+      <div class="sat-row au au2">
+        <div class="sat-ico" style="background:rgba(0,229,160,.12);">&#128225;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">HO-68</div><div class="sat-sub">HAMSAT &middot; 7,308 km</div></div>
+        <div class="sat-badge meo">MEO</div>
+      </div>
+      <div class="sat-row au au3">
+        <div class="sat-ico" style="background:rgba(157,111,255,.12);">&#128301;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">VO-52</div><div class="sat-sub">HAMSAT &middot; 627 km</div></div>
+        <div class="sat-badge leo">LEO</div>
+      </div>
+      <div class="sat-row au au4">
+        <div class="sat-ico" style="background:rgba(255,124,58,.12);">&#127758;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">SO-50</div><div class="sat-sub">SaudiSat &middot; 703 km</div></div>
+        <div class="sat-badge leo">LEO</div>
+      </div>
+      <div class="sat-row au au5">
+        <div class="sat-ico" style="background:rgba(255,196,68,.12);">&#128246;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">AO-27</div><div class="sat-sub">AMRAD &middot; 779 km</div></div>
+        <div class="sat-badge leo">LEO</div>
+      </div>
+      <div class="sat-row au au6">
+        <div class="sat-ico" style="background:rgba(100,160,255,.1);">&#128760;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">FO-29</div><div class="sat-sub">FujiSat &middot; 887 km</div></div>
+        <div class="sat-badge leo">LEO</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div id="center">
+
+    <!-- TAB 1: TELEMETRY -->
+    <div class="tab-panel active" id="tab1">
+      <!-- Hero: big temp + hum -->
+      <div class="t1-hero">
+        <div class="t1-big" style="flex:1.2;">
+          <div class="t1-big-lbl">Temperature &mdash; Mumbai</div>
+          <div><span class="t1-big-val" id="tempHero">31.4</span><span class="t1-big-unit">&deg;C</span></div>
+          <div class="t1-big-sub">Feels like <span id="feelsLike">34.2</span>&deg;C &nbsp;&middot;&nbsp; <span id="wxCond">Partly Cloudy</span></div>
+          <canvas id="tempSparkline" height="48" style="width:100%;display:block;margin-top:10px;opacity:.85;"></canvas>
+          <div class="chart-legend">
+            <div class="chart-legend-item"><span class="chart-swatch" style="background:#ff7c3a;"></span>Temp (°C)</div>
+          </div>
+        </div>
+        <div class="t1-big" style="flex:.7;background:rgba(0,229,160,.06);border-color:rgba(0,229,160,.2);">
+          <div class="t1-big-lbl">Humidity</div>
+          <div><span class="t1-big-val" id="humHero" style="color:var(--grn);">78</span><span class="t1-big-unit" style="color:var(--grn);">%</span></div>
+          <div class="t1-big-sub">HIGH MOISTURE</div>
+          <div style="margin-top:14px;">
+            <div style="height:6px;background:rgba(0,229,160,.1);border-radius:3px;border:1px solid rgba(0,229,160,.2);">
+              <div id="humBarHero" style="height:100%;border-radius:3px;background:linear-gradient(90deg,#00e5a0,#00c88a);width:78%;transition:width .9s ease;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sensor metrics grid -->
+      <div class="t1-grid">
+        <div class="t1-metric">
+          <div class="card-shine"></div>
+          <div class="tm-lbl">Pressure</div>
+          <div><span class="tm-val" id="presVal">1008</span><span class="tm-unit" style="color:var(--pur);">hPa</span></div>
+          <div class="tm-bar-wrap"><div class="tm-bar" id="presBar" style="width:55%;background:linear-gradient(90deg,var(--acc),var(--pur));"></div></div>
+        </div>
+        <div class="t1-metric">
+          <div class="card-shine"></div>
+          <div class="tm-lbl">Wind Speed</div>
+          <div><span class="tm-val" id="windVal">18</span><span class="tm-unit" style="color:var(--wrn);">km/h</span></div>
+          <div class="tm-bar-wrap"><div class="tm-bar" id="windBar" style="width:30%;background:linear-gradient(90deg,var(--acc),var(--wrn));"></div></div>
+        </div>
+        <div class="t1-metric">
+          <div class="card-shine"></div>
+          <div class="tm-lbl">UV Index</div>
+          <div><span class="tm-val" id="uvVal">7.2</span><span class="tm-unit" style="color:var(--pur);">/11</span></div>
+          <div class="tm-bar-wrap"><div class="tm-bar" id="uvBar" style="width:65%;background:linear-gradient(90deg,var(--pur),var(--red));"></div></div>
+        </div>
+        <div class="t1-metric">
+          <div class="card-shine"></div>
+          <div class="tm-lbl">Air Quality (AQI)</div>
+          <div><span class="tm-val" id="aqiVal">142</span><span class="tm-unit" style="color:var(--wrn);">Mod</span></div>
+          <div class="tm-bar-wrap"><div class="tm-bar" id="aqiBar" style="width:47%;background:linear-gradient(90deg,var(--grn),var(--wrn));"></div></div>
+        </div>
+      </div>
+
+      <!-- Extra stat chips -->
+      <div class="t1-extras">
+        <div class="t1-extra">
+          <div class="te-val"><span id="dewVal">24.1</span>&deg;</div>
+          <div class="te-lbl">Dew Point &deg;C</div>
+        </div>
+        <div class="t1-extra">
+          <div class="te-val"><span id="visVal">6.2</span>km</div>
+          <div class="te-lbl">Visibility</div>
+        </div>
+        <div class="t1-extra">
+          <div class="te-val"><span id="cloudVal">68</span>%</div>
+          <div class="te-lbl">Cloud Cover</div>
+        </div>
+        <div class="t1-extra">
+          <div class="te-val" style="color:var(--wrn);">06:02</div>
+          <div class="te-lbl">Sunrise</div>
+        </div>
+        <div class="t1-extra">
+          <div class="te-val" style="color:var(--org);">19:14</div>
+          <div class="te-lbl">Sunset</div>
+        </div>
+        <div class="t1-extra">
+          <div class="te-val"><span id="rainVal">2</span>%</div>
+          <div class="te-lbl">Rain Prob</div>
+        </div>
+      </div>
+
+      <!-- 24h chart -->
+      <div class="t1-chart-wrap">
+        <div class="t1-chart-title">24h Climate History &mdash; Mumbai (Dummy Data)</div>
+        <div class="chart-canvas-wrap">
+          <canvas id="climChart"></canvas>
+        </div>
+        <div class="chart-legend">
+          <div class="chart-legend-item"><span class="chart-swatch" style="background:#ff7c3a;"></span>Temp (°C)</div>
+          <div class="chart-legend-item"><span class="chart-swatch" style="background:#00e5a0;"></span>Humidity (%)</div>
+          <div class="chart-legend-item"><span class="chart-swatch chart-swatch-dash" style="border-color:#9d6fff;"></span>Pressure (hPa, own scale)</div>
+        </div>
+      </div>
+
+      <!-- System health -->
+      <div style="margin-top:10px;">
+        <div style="font-family:var(--fm);font-size:.53rem;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:8px;">System Health &mdash; Vidyajyoti SAT-01</div>
+        <div class="sys-row"><span class="sysn">POWER SUBSYSTEM</span><span class="sysbadge ok">NOMINAL &middot; 3.4W</span></div>
+        <div class="sys-row"><span class="sysn">COMM &middot; UHF/VHF</span><span class="sysbadge ok">NOMINAL</span></div>
+        <div class="sys-row"><span class="sysn">ATTITUDE CONTROL</span><span class="sysbadge ok">NOMINAL</span></div>
+        <div class="sys-row"><span class="sysn">PAYLOAD SENSOR</span><span class="sysbadge warn">STANDBY</span></div>
+        <div class="sys-row"><span class="sysn">BATTERY</span><span class="sysbadge ok">89%</span></div>
+      </div>
+    </div>
+
+    <!-- TAB 2: ORBIT TRACKER -->
+    <div class="tab-panel" id="tab2">
+      <!-- View toggle -->
+      <div id="view-toggle">
+        <button class="vtbtn active" onclick="setMapMode('map',this)">World Map</button>
+        <button class="vtbtn" onclick="setMapMode('globe',this)">3D Globe</button>
+      </div>
+      <div id="mapStage">
+      <div id="mapLoadHint" class="map-fallback-msg">Loading map…</div>
+      <div id="worldMapLeaflet"></div>
+      <div id="globeWrap"></div>
+      <!-- Polar plot overlay -->
+      <div id="polarOverlay" class="map-overlay">
+        <canvas id="polarCanvas" width="130" height="130"></canvas>
+        <div class="chart-legend">
+          <div class="chart-legend-item"><span class="chart-swatch" style="background:#4d9fff;"></span>Satellite track</div>
+          <div class="chart-legend-item"><span class="chart-swatch" style="background:rgba(100,160,255,.4);"></span>Elevation rings</div>
+        </div>
+      </div>
+      <!-- Signal strength overlay -->
+      <div id="sigOverlay" class="map-overlay">
+        <canvas id="sigCanvas" width="200" height="72"></canvas>
+        <div class="chart-legend">
+          <div class="chart-legend-item"><span class="chart-swatch" style="background:#4d9fff;"></span>VHF</div>
+          <div class="chart-legend-item"><span class="chart-swatch" style="background:#9d6fff;"></span>UHF</div>
+        </div>
+      </div>
+      <!-- Map tooltip -->
+      <div id="mtt">
+        <div class="mtt-name" id="mttName">VO-52</div>
+        <div class="mtt-row"><span class="mtt-k">Az</span><span class="mtt-v" id="mttAz">305.8&deg;</span></div>
+        <div class="mtt-row"><span class="mtt-k">El</span><span class="mtt-v" id="mttEl">24.4&deg;</span></div>
+        <div class="mtt-row"><span class="mtt-k">Alt</span><span class="mtt-v" id="mttAlt">627 km</span></div>
+        <div class="mtt-row"><span class="mtt-k">Doppler</span><span class="mtt-v" id="mttDop">+205 Hz</span></div>
+      </div>
+      </div>
+      <!-- Status bar -->
+      <div id="signalBar">
+        <div class="sb-item">Lat <span class="sb-val" id="sb-lat">22.14&deg;N</span></div>
+        <div class="sb-item">Lon <span class="sb-val" id="sb-lon">88.36&deg;E</span></div>
+        <div class="sb-item">Alt <span class="sb-val" id="sb-alt">412 km</span></div>
+        <div class="sb-item">Vel <span class="sb-val" id="sb-vel">7.662 km/s</span></div>
+        <div class="sb-item">Ground Track <span class="sb-val" id="sb-gt">Bay of Bengal</span></div>
+        <div class="sb-item">Next Pass <span class="sb-val" id="sb-np">03:47:00</span></div>
+      </div>
+      <!-- Pass table -->
+      <div id="passTable">
+        <div class="pt-header">
+          <div>SATELLITE</div><div>AZ</div><div>EL</div><div>DIR</div>
+          <div>NEXT PASS</div><div>FOOTPRINT</div><div>ALT km</div><div>DOPPLER</div><div>ORBIT</div>
+        </div>
+        <div class="pt-row sel">
+          <div class="col-sat">VIDYAJYOTI</div><div>215.5&deg;</div><div>-38.4&deg;</div>
+          <div class="col-g">&#8593;</div><div>21:42:15</div><div>HG65MA</div><div>412</div>
+          <div class="col-g">-1.2kHz</div><div>6607</div>
+        </div>
+        <div class="pt-row">
+          <div class="col-sat">VO-52</div><div>305.8&deg;</div><div>24.4&deg;</div>
+          <div class="col-g">&#8593;</div><div>22:13:10</div><div>IP80FD</div><div>627</div>
+          <div class="col-g">+205Hz</div><div>28056</div>
+        </div>
+        <div class="pt-row">
+          <div class="col-sat">SO-50</div><div>150.3&deg;</div><div>-60.1&deg;</div>
+          <div class="col-o">&#8595;</div><div>23:21:20</div><div>MD3OOF</div><div>703</div>
+          <div class="col-o">-533Hz</div><div>51597</div>
+        </div>
+        <div class="pt-row">
+          <div class="col-sat">AO-27</div><div>141.4&deg;</div><div>-17.7&deg;</div>
+          <div class="col-o">&#8595;</div><div>00:14:55</div><div>LK00CS</div><div>779</div>
+          <div class="col-o">-2.1kHz</div><div>9175</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: DASHBOARD -->
+    <div class="tab-panel" id="tab3">
+      <!-- Ticker -->
+      <div class="ticker">
+        <div class="ticker-inner">&#128752; VIDYAJYOTI SAT-01 &nbsp;&#183;&nbsp; ALT: 412km &nbsp;&#183;&nbsp; VEL: 7.662km/s &nbsp;&#183;&nbsp; TEMP: 31.4&deg;C &nbsp;&#183;&nbsp; HUM: 78% &nbsp;&#183;&nbsp; PRES: 1008hPa &nbsp;&#183;&nbsp; UV: 7.2 &nbsp;&#183;&nbsp; AQI: 142 MODERATE &nbsp;&#183;&nbsp; BATTERY: 89% &nbsp;&#183;&nbsp; UPLINK: ACTIVE &nbsp;&#183;&nbsp; NEXT PASS: 03:47 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &#128752; VIDYAJYOTI SAT-01 &nbsp;&#183;&nbsp; ALT: 412km &nbsp;&#183;&nbsp; VEL: 7.662km/s &nbsp;&#183;&nbsp; TEMP: 31.4&deg;C &nbsp;&#183;&nbsp; HUM: 78% &nbsp;&#183;&nbsp; PRES: 1008hPa &nbsp;&#183;&nbsp; UV: 7.2 &nbsp;&#183;&nbsp; AQI: 142 MODERATE &nbsp;&#183;&nbsp; BATTERY: 89% &nbsp;&#183;&nbsp; UPLINK: ACTIVE &nbsp;&#183;&nbsp; NEXT PASS: 03:47</div>
+      </div>
+
+      <!-- India map + climate chart side by side -->
+      <div class="t3-main">
+        <div class="t3-half">
+          <div class="t3-sec-title">Climate History 24h &mdash; Mumbai</div>
+          <div class="chart-canvas-wrap">
+            <canvas id="dashChart"></canvas>
+          </div>
+          <div class="chart-legend">
+            <div class="chart-legend-item"><span class="chart-swatch" style="background:#ff7c3a;"></span>Temp (°C)</div>
+            <div class="chart-legend-item"><span class="chart-swatch" style="background:#00e5a0;"></span>Humidity (%)</div>
+            <div class="chart-legend-item"><span class="chart-swatch chart-swatch-dash" style="border-color:#9d6fff;"></span>Pressure (hPa, own scale)</div>
+          </div>
+        </div>
+        <div class="t3-map-panel" style="margin-bottom:0;">
+          <div class="t3-map-title">&#128752; India &mdash; Climate Map</div>
+          <div id="indiaMapLeaflet"></div>
+        </div>
+      </div>
+
+      <!-- 4 stat boxes -->
+      <div class="t3-stat4">
+        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--org);">31.4&deg;</div><div class="t3-s4-lbl">Avg Temp</div></div>
+        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--grn);">78%</div><div class="t3-s4-lbl">Humidity</div></div>
+        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--pur);">1008</div><div class="t3-s4-lbl">Pressure hPa</div></div>
+        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--wrn);">7.2</div><div class="t3-s4-lbl">UV Index</div></div>
+      </div>
+
+      <!-- Launches -->
+      <div style="background:var(--glass2);border:1px solid var(--b1);border-radius:8px;overflow:hidden;margin-bottom:10px;">
+        <div style="padding:9px 13px;border-bottom:1px solid var(--b1);font-family:var(--fm);font-size:.53rem;letter-spacing:2px;color:var(--dim);text-transform:uppercase;">Upcoming Launches</div>
+        <div class="launch-item"><div class="li-date"><div class="li-mon">JUN</div><div class="li-day">28</div></div>
+          <div style="flex:1;"><div class="li-mission">SpaceX Falcon 9 &mdash; 22 Starlink</div><div class="li-rocket">Falcon 9 Block 5 &middot; Cape Canaveral</div></div>
+          <div class="li-badge li-priv">PRIVATE</div></div>
+        <div class="launch-item"><div class="li-date"><div class="li-mon">JUL</div><div class="li-day">04</div></div>
+          <div style="flex:1;"><div class="li-mission">ISRO PSLV-C60 &mdash; NVS-02</div><div class="li-rocket">PSLV-XL &middot; Satish Dhawan Space Centre</div></div>
+          <div class="li-badge li-gov">GOVT</div></div>
+        <div class="launch-item"><div class="li-date"><div class="li-mon">AUG</div><div class="li-day">12</div></div>
+          <div style="flex:1;"><div class="li-mission">China ChinaSat 6E</div><div class="li-rocket">Long March 3B &middot; Xichang</div></div>
+          <div class="li-badge li-mil">MIL</div></div>
+      </div>
+
+      <!-- Categories -->
+      <div style="background:var(--glass2);border:1px solid var(--b1);border-radius:8px;padding:12px 14px;">
+        <div class="t3-sec-title">Satellites by End-Use Category</div>
+        <div class="cat-row"><span class="cat-nm">Remote Sensing</span><div class="cat-bw"><div class="cat-b" style="width:82%;background:var(--acc);"></div></div><span class="cat-v">1,270</span></div>
+        <div class="cat-row"><span class="cat-nm">Communications</span><div class="cat-bw"><div class="cat-b" style="width:62%;background:var(--pur);"></div></div><span class="cat-v">890</span></div>
+        <div class="cat-row"><span class="cat-nm">Science / Tech</span><div class="cat-bw"><div class="cat-b" style="width:40%;background:var(--grn);"></div></div><span class="cat-v">550</span></div>
+        <div class="cat-row"><span class="cat-nm">Navigation</span><div class="cat-bw"><div class="cat-b" style="width:32%;background:var(--wrn);"></div></div><span class="cat-v">440</span></div>
+        <div class="cat-row"><span class="cat-nm">Military</span><div class="cat-bw"><div class="cat-b" style="width:24%;background:var(--org);"></div></div><span class="cat-v">340</span></div>
+      </div>
+    </div>
+
+  </div><!-- /center -->
+
+  <!-- RIGHT PANEL -->
+  <div class="rpanel">
+    <!-- Sat info -->
+    <div class="sic">
+      <div class="sic-glow"></div>
+      <div class="sic-code">SAT-01 &middot; LEO &middot; ISRO STUDENT PROGRAM</div>
+      <div class="sic-name">VIDYAJYOTI<br>SAT-01</div>
+      <div class="sic-grid">
+        <div class="sic-m"><div><span class="sic-mv" id="rm-alt">412</span><span class="sic-mu">KM</span></div><div class="sic-ml">Altitude</div></div>
+        <div class="sic-m"><div><span class="sic-mv" id="rm-vel">7.3</span><span class="sic-mu">km/s</span></div><div class="sic-ml">Velocity</div></div>
+        <div class="sic-m"><div><span class="sic-mv" id="rm-per">92</span><span class="sic-mu">min</span></div><div class="sic-ml">Period</div></div>
+        <div class="sic-m"><div><span class="sic-mv">97.4</span><span class="sic-mu">deg</span></div><div class="sic-ml">Inclination</div></div>
+      </div>
+      <div style="margin-top:8px;padding:8px 10px;background:var(--glass);border:1px solid var(--b1);border-radius:6px;">
+        <div style="font-family:var(--fm);font-size:.48rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Purpose</div>
+        <div style="font-family:var(--fb);font-size:.65rem;color:var(--txt);">Earth Observation &middot; Climate Monitoring &middot; Amateur Radio</div>
+      </div>
+    </div>
+
+    <!-- Gauge -->
+    <div class="sec-hdr">Signal Quality <span class="sec-action">Details</span></div>
+    <div class="gauge-wrap">
+      <canvas id="gaugeCanvas" width="180" height="88"></canvas>
+      <div class="chart-legend" style="justify-content:center;margin-top:6px;">
+        <div class="chart-legend-item"><span class="chart-swatch" style="background:linear-gradient(90deg,#4d9fff,#00e5a0);"></span>Signal Quality (%)</div>
+        <div class="chart-legend-item"><span class="chart-swatch" style="background:rgba(100,160,255,.2);"></span>0 – 100 scale</div>
+      </div>
+    </div>
+
+    <!-- Upcoming launches -->
+    <div class="sec-hdr">Upcoming Launches <span class="sec-action">All</span></div>
+    <div class="launch-item"><div class="li-date"><div class="li-mon">JUN</div><div class="li-day">28</div></div>
+      <div style="flex:1;"><div class="li-mission">SpaceX &mdash; Starlink</div><div class="li-rocket">Falcon 9 &middot; Cape Canaveral</div></div>
+      <div class="li-badge li-priv">PRIV</div></div>
+    <div class="launch-item"><div class="li-date"><div class="li-mon">JUL</div><div class="li-day">04</div></div>
+      <div style="flex:1;"><div class="li-mission">ISRO PSLV-C60</div><div class="li-rocket">PSLV-XL &middot; Satish Dhawan</div></div>
+      <div class="li-badge li-gov">GOVT</div></div>
+    <div class="launch-item"><div class="li-date"><div class="li-mon">AUG</div><div class="li-day">12</div></div>
+      <div style="flex:1;"><div class="li-mission">ChinaSat 6E</div><div class="li-rocket">Long March 3B &middot; Xichang</div></div>
+      <div class="li-badge li-mil">MIL</div></div>
+
+    <!-- Categories -->
+    <div class="sec-hdr">By Category</div>
+    <div style="padding:8px 12px;">
+      <div class="cat-row"><span class="cat-nm">Remote Sensing</span><div class="cat-bw"><div class="cat-b" style="width:82%;background:var(--acc);"></div></div><span class="cat-v">1,270</span></div>
+      <div class="cat-row"><span class="cat-nm">Comms</span><div class="cat-bw"><div class="cat-b" style="width:62%;background:var(--pur);"></div></div><span class="cat-v">890</span></div>
+      <div class="cat-row"><span class="cat-nm">Science</span><div class="cat-bw"><div class="cat-b" style="width:40%;background:var(--grn);"></div></div><span class="cat-v">550</span></div>
+      <div class="cat-row"><span class="cat-nm">Navigation</span><div class="cat-bw"><div class="cat-b" style="width:32%;background:var(--wrn);"></div></div><span class="cat-v">440</span></div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/sensors.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/maps.js') }}"></script>
+</body>
+</html>
