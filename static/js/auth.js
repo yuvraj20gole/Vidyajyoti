@@ -218,6 +218,13 @@ document.getElementById('r-email').addEventListener('input', function () {
 
 document.getElementById('r-send-otp-btn').addEventListener('click', async function () {
   clearErr('r-email-err');
+  emailVerified = false;
+  verificationToken = '';
+  document.getElementById('r-verified-badge').hidden = true;
+  setRegisterEnabled(false);
+  document.getElementById('r-email').readOnly = false;
+  document.getElementById('r-verify-otp-btn').disabled = false;
+  document.getElementById('r-verify-otp-btn').textContent = 'Verify';
   var email = val('r-email').toLowerCase();
   if (!isVitEmail(email)) {
     showErr('r-email-err', 'Use your @vit.edu.in email address');

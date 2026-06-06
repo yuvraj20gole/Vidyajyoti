@@ -7,7 +7,7 @@ from flask_login import login_user, logout_user
 from extensions import db, login_manager
 from models.email_otp import EmailOtp
 from models.user import User
-from services.email import send_otp_email
+from services.email import EmailSendError, send_otp_email
 from services.verification import make_verification_token, verify_verification_token
 
 auth_bp = Blueprint("auth", __name__)
@@ -82,8 +82,13 @@ def send_otp():
         record.set_otp(code)
         db.session.add(record)
 
+    try:
+        send_otp_email(email, code)
+    except EmailSendError as exc:
+        db.session.rollback()
+        return jsonify({"error": str(exc)}), 502
+
     db.session.commit()
-    send_otp_email(email, code)
 
     payload = {"ok": True, "message": "Verification code sent."}
     if current_app.config.get("MAIL_DEV_MODE"):

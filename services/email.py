@@ -2,10 +2,15 @@ import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formataddr
 
 from flask import current_app
 
 logger = logging.getLogger(__name__)
+
+
+class EmailSendError(Exception):
+    pass
 
 
 def _smtp_configured() -> bool:
@@ -35,11 +40,11 @@ def send_otp_email(email: str, code: str) -> None:
         logger.warning("[MAIL_DEV_MODE] OTP for %s: %s", email, code)
         return
 
-    mail_from = current_app.config.get("MAIL_FROM") or current_app.config["SMTP_USER"]
-    host = current_app.config.get("SMTP_HOST", "smtp.gmail.com")
-    port = int(current_app.config.get("SMTP_PORT", 587))
     user = current_app.config["SMTP_USER"]
     password = current_app.config["SMTP_PASSWORD"]
+    mail_from = current_app.config.get("MAIL_FROM") or formataddr(("Vidyajyoti", user))
+    host = current_app.config.get("SMTP_HOST", "smtp.gmail.com")
+    port = int(current_app.config.get("SMTP_PORT", 587))
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -48,9 +53,21 @@ def send_otp_email(email: str, code: str) -> None:
     msg.attach(MIMEText(body, "plain"))
     msg.attach(MIMEText(html, "html"))
 
-    with smtplib.SMTP(host, port, timeout=30) as server:
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-        server.login(user, password)
-        server.sendmail(mail_from, [email], msg.as_string())
+    try:
+        with smtplib.SMTP(host, port, timeout=30) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(user, password)
+            server.sendmail(user, [email], msg.as_string())
+    except smtplib.SMTPAuthenticationError as exc:
+        logger.exception("Gmail SMTP authentication failed")
+        raise EmailSendError(
+            "Gmail login failed. Check SMTP_USER and SMTP_PASSWORD (app password) on Render."
+        ) from exc
+    except smtplib.SMTPException as exc:
+        logger.exception("SMTP error while sending OTP to %s", email)
+        raise EmailSendError("Could not send email. Please try again in a minute.") from exc
+    except OSError as exc:
+        logger.exception("Network error while sending OTP to %s", email)
+        raise EmailSendError("Email server unreachable. Please try again later.") from exc
