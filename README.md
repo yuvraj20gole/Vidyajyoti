@@ -118,6 +118,11 @@ New users must verify their `@vit.edu.in` email before creating an account:
 
 Then redeploy. OTP emails will be sent via Gmail to `@vit.edu.in` inboxes.
 
+**Render free tier limitation:** Render blocks outbound SMTP on ports 25, 465, and 587. Gmail SMTP will **not** work on the free web service plan (connection timeouts in logs). Options:
+
+1. **Demo on free tier:** set `MAIL_DEV_MODE=1`, click Send OTP, read the code in **Render → Logs**
+2. **Real emails:** upgrade the web service to a **paid** Render instance (Starter), then Gmail SMTP works
+
 ---
 
 ## API endpoints (authenticated)

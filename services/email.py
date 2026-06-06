@@ -68,6 +68,15 @@ def send_otp_email(email: str, code: str) -> None:
     except smtplib.SMTPException as exc:
         logger.exception("SMTP error while sending OTP to %s", email)
         raise EmailSendError("Could not send email. Please try again in a minute.") from exc
+    except TimeoutError as exc:
+        logger.exception("SMTP timeout while sending OTP to %s", email)
+        raise EmailSendError(
+            "Email server timed out. Render free tier blocks Gmail SMTP (ports 587/465). "
+            "Set MAIL_DEV_MODE=1 and read OTP from Render Logs, or upgrade to a paid Render plan."
+        ) from exc
     except OSError as exc:
         logger.exception("Network error while sending OTP to %s", email)
-        raise EmailSendError("Email server unreachable. Please try again later.") from exc
+        raise EmailSendError(
+            "Cannot reach Gmail SMTP. Render free tier blocks ports 587 and 465. "
+            "Use MAIL_DEV_MODE=1 (OTP in Render Logs) or upgrade Render to a paid plan."
+        ) from exc
