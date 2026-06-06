@@ -3,6 +3,20 @@
    Uses Flask API locally; client-side fallback on GitHub Pages
 ==================================================== */
 var useApi = !location.hostname.endsWith('github.io');
+
+function redirectToLogin() {
+  window.location.replace('/login');
+}
+
+function apiFetch(url) {
+  return fetch(url, { credentials: 'same-origin' }).then(function (res) {
+    if (res.status === 401) {
+      redirectToLogin();
+      return null;
+    }
+    return res;
+  });
+}
 var D = { temp: 31.4, hum: 78, pres: 1008, wind: 18, uv: 7.2, aqi: 142, dew: 24.1, vis: 6.2, cloud: 68, rain: 2, age: 0 };
 var wxConds = ['Partly Cloudy', 'Mostly Sunny', 'Overcast', 'Hazy', 'Humid'];
 var tempHistory = [];
@@ -114,12 +128,13 @@ function updateOrbitClient() {
 async function updateSensors() {
   if (useApi) {
     try {
-      var res = await fetch('/api/telemetry');
-      if (res.ok) {
+      var res = await apiFetch('/api/telemetry');
+      if (res && res.ok) {
         applyTelemetry(await res.json());
         return;
       }
-    } catch (e) { /* fall through to client */ }
+      if (useApi) return;
+    } catch (e) { return; }
   }
   updateSensorsClient();
 }
@@ -127,12 +142,13 @@ async function updateSensors() {
 async function updateOrbit() {
   if (useApi) {
     try {
-      var res = await fetch('/api/orbit');
-      if (res.ok) {
+      var res = await apiFetch('/api/orbit');
+      if (res && res.ok) {
         applyOrbit(await res.json());
         return;
       }
-    } catch (e) { /* fall through to client */ }
+      if (useApi) return;
+    } catch (e) { return; }
   }
   updateOrbitClient();
 }

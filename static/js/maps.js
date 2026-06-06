@@ -242,9 +242,12 @@ async function initWorldMap() {
   var sats = DEFAULT_SATS.slice();
   if (typeof useApi !== 'undefined' && useApi) {
     try {
-      var res = await fetch('/api/satellites');
-      if (res.ok) sats = await res.json();
-    } catch (e) { /* use DEFAULT_SATS */ }
+      var res = typeof apiFetch === 'function'
+        ? await apiFetch('/api/satellites')
+        : await fetch('/api/satellites', { credentials: 'same-origin' });
+      if (res && res.status === 401) return;
+      if (res && res.ok) sats = await res.json();
+    } catch (e) { return; }
   }
   SATS2 = sats;
   worldMapReady = true;

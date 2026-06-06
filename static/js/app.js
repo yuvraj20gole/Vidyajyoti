@@ -1,6 +1,14 @@
 /* ====================================================
    UTILITIES & APP INIT
 ==================================================== */
+(function () {
+  if (location.hostname.endsWith('github.io')) return;
+  if (!document.getElementById('topbar')) return;
+  fetch('/api/auth/session', { credentials: 'same-origin' }).then(function (res) {
+    if (!res.ok) window.location.replace('/login');
+  });
+})();
+
 function el(id) { return document.getElementById(id); }
 function pad(v) { return String(v).padStart(2, '0'); }
 function nudge(v, d, mn, mx) {

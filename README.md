@@ -90,38 +90,7 @@ GitHub Pages cannot run login or a database. Use **Render** for the college demo
 | `DATABASE_URL` | PostgreSQL connection (linked from database) |
 | `FLASK_DEBUG` | `0` in production |
 | `ALLOWED_EMAIL_DOMAIN` | `vit.edu.in` |
-| `SMTP_HOST` | Gmail SMTP host (`smtp.gmail.com`) |
-| `SMTP_PORT` | SMTP port (`587` for TLS) |
-| `SMTP_USER` | Gmail address used to send OTP emails |
-| `SMTP_PASSWORD` | Gmail [app password](https://myaccount.google.com/apppasswords) (not your login password) |
-| `MAIL_FROM` | Optional sender display, e.g. `Vidyajyoti <you@gmail.com>` |
-| `MAIL_DEV_MODE` | `1` logs OTP to server logs instead of sending email |
-
 Copy [`.env.example`](.env.example) for local development.
-
-### Email OTP (registration)
-
-New users must verify their `@vit.edu.in` email before creating an account:
-
-1. Enter email → **Send OTP**
-2. Enter the 6-digit code → **Verify**
-3. Complete the form → **Create Account**
-
-**Local testing:** set `MAIL_DEV_MODE=1` — the OTP appears in the terminal where Flask runs.
-
-**Production (Gmail SMTP):** in Render → Environment, add:
-
-- `SMTP_USER` — college/project Gmail address
-- `SMTP_PASSWORD` — 16-character Gmail app password
-- `MAIL_FROM` — e.g. `Vidyajyoti <you@gmail.com>`
-- `MAIL_DEV_MODE` — `0`
-
-Then redeploy. OTP emails will be sent via Gmail to `@vit.edu.in` inboxes.
-
-**Render free tier limitation:** Render blocks outbound SMTP on ports 25, 465, and 587. Gmail SMTP will **not** work on the free web service plan (connection timeouts in logs). Options:
-
-1. **Demo on free tier:** set `MAIL_DEV_MODE=1`, click Send OTP, read the code in **Render → Logs**
-2. **Real emails:** upgrade the web service to a **paid** Render instance (Starter), then Gmail SMTP works
 
 ---
 
@@ -129,10 +98,9 @@ Then redeploy. OTP emails will be sent via Gmail to `@vit.edu.in` inboxes.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/auth/otp/send` | POST | Send 6-digit email verification code |
-| `/api/auth/otp/verify` | POST | Verify OTP, returns `verification_token` |
-| `/api/auth/register` | POST | Create account (requires verified email) |
-| `/api/auth/login` | POST | Sign in |
+| `/api/auth/register` | POST | Create account (`@vit.edu.in` only) |
+| `/api/auth/login` | POST | Sign in (registered users only) |
+| `/api/auth/session` | GET | Check active session |
 | `/logout` | GET | Sign out |
 | `/api/telemetry` | GET | Sensor readings |
 | `/api/orbit` | GET | Satellite position |
@@ -158,8 +126,6 @@ vidyajyoti-tracker/
 ├── config.py
 ├── extensions.py
 ├── models/user.py
-├── models/email_otp.py
-├── services/email.py
 ├── routes/auth.py
 ├── routes/api.py
 ├── templates/auth.html

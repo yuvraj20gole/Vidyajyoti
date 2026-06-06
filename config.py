@@ -22,14 +22,6 @@ class Config:
     SESSION_COOKIE_SAMESITE = "Lax"
     REMEMBER_COOKIE_HTTPONLY = True
     PREFERRED_URL_SCHEME = "https"
-    SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
-    SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-    SMTP_USER = os.environ.get("SMTP_USER", "")
-    SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-    MAIL_FROM = os.environ.get("MAIL_FROM", "")
-    MAIL_DEV_MODE = os.environ.get("MAIL_DEV_MODE", "0") in ("1", "true", "True")
-    OTP_EXPIRY_MINUTES = int(os.environ.get("OTP_EXPIRY_MINUTES", "10"))
-
     @staticmethod
     def init_app(app):
         INSTANCE_DIR.mkdir(parents=True, exist_ok=True)

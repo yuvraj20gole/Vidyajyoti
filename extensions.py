@@ -5,3 +5,4 @@ db = SQLAlchemy()
 login_manager = LoginManager()
 login_manager.login_view = "auth.login_page"
 login_manager.login_message = "Please sign in with your VIT email to continue."
+login_manager.session_protection = "strong"
