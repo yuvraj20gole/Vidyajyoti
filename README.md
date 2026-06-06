@@ -90,8 +90,11 @@ GitHub Pages cannot run login or a database. Use **Render** for the college demo
 | `DATABASE_URL` | PostgreSQL connection (linked from database) |
 | `FLASK_DEBUG` | `0` in production |
 | `ALLOWED_EMAIL_DOMAIN` | `vit.edu.in` |
-| `RESEND_API_KEY` | Resend API key for OTP emails (production) |
-| `MAIL_FROM` | Sender address, e.g. `Vidyajyoti <onboarding@resend.dev>` |
+| `SMTP_HOST` | Gmail SMTP host (`smtp.gmail.com`) |
+| `SMTP_PORT` | SMTP port (`587` for TLS) |
+| `SMTP_USER` | Gmail address used to send OTP emails |
+| `SMTP_PASSWORD` | Gmail [app password](https://myaccount.google.com/apppasswords) (not your login password) |
+| `MAIL_FROM` | Optional sender display, e.g. `Vidyajyoti <you@gmail.com>` |
 | `MAIL_DEV_MODE` | `1` logs OTP to server logs instead of sending email |
 
 Copy [`.env.example`](.env.example) for local development.
@@ -106,7 +109,14 @@ New users must verify their `@vit.edu.in` email before creating an account:
 
 **Local testing:** set `MAIL_DEV_MODE=1` — the OTP appears in the terminal where Flask runs.
 
-**Production:** create a free [Resend](https://resend.com) account, add `RESEND_API_KEY` and `MAIL_FROM` in Render → Environment, set `MAIL_DEV_MODE=0`, and redeploy.
+**Production (Gmail SMTP):** in Render → Environment, add:
+
+- `SMTP_USER` — college/project Gmail address
+- `SMTP_PASSWORD` — 16-character Gmail app password
+- `MAIL_FROM` — e.g. `Vidyajyoti <you@gmail.com>`
+- `MAIL_DEV_MODE` — `0`
+
+Then redeploy. OTP emails will be sent via Gmail to `@vit.edu.in` inboxes.
 
 ---
 

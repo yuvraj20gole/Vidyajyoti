@@ -12,7 +12,7 @@ class Config:
         "DATABASE_URL",
         f"sqlite:///{INSTANCE_DIR / 'vidyajyoti.db'}",
     )
-    # Render uses postgres:// — SQLAlchemy 2.x needs postgresql://
+    # Render uses postgres:// - SQLAlchemy 2.x needs postgresql://
     if SQLALCHEMY_DATABASE_URI.startswith("postgres://"):
         SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace(
             "postgres://", "postgresql://", 1
@@ -22,8 +22,11 @@ class Config:
     SESSION_COOKIE_SAMESITE = "Lax"
     REMEMBER_COOKIE_HTTPONLY = True
     PREFERRED_URL_SCHEME = "https"
-    RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-    MAIL_FROM = os.environ.get("MAIL_FROM", "Vidyajyoti <onboarding@resend.dev>")
+    SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+    SMTP_USER = os.environ.get("SMTP_USER", "")
+    SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+    MAIL_FROM = os.environ.get("MAIL_FROM", "")
     MAIL_DEV_MODE = os.environ.get("MAIL_DEV_MODE", "0") in ("1", "true", "True")
     OTP_EXPIRY_MINUTES = int(os.environ.get("OTP_EXPIRY_MINUTES", "10"))
 

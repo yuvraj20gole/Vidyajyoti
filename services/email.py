@@ -1,8 +1,18 @@
 import logging
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 from flask import current_app
 
 logger = logging.getLogger(__name__)
+
+
+def _smtp_configured() -> bool:
+    return bool(
+        current_app.config.get("SMTP_USER")
+        and current_app.config.get("SMTP_PASSWORD")
+    )
 
 
 def send_otp_email(email: str, code: str) -> None:
@@ -21,22 +31,26 @@ def send_otp_email(email: str, code: str) -> None:
     )
 
     dev_mode = current_app.config.get("MAIL_DEV_MODE", False)
-    api_key = current_app.config.get("RESEND_API_KEY", "")
-
-    if dev_mode or not api_key:
+    if dev_mode or not _smtp_configured():
         logger.warning("[MAIL_DEV_MODE] OTP for %s: %s", email, code)
         return
 
-    mail_from = current_app.config.get("MAIL_FROM", "Vidyajyoti <onboarding@resend.dev>")
-    import resend
+    mail_from = current_app.config.get("MAIL_FROM") or current_app.config["SMTP_USER"]
+    host = current_app.config.get("SMTP_HOST", "smtp.gmail.com")
+    port = int(current_app.config.get("SMTP_PORT", 587))
+    user = current_app.config["SMTP_USER"]
+    password = current_app.config["SMTP_PASSWORD"]
 
-    resend.api_key = api_key
-    resend.Emails.send(
-        {
-            "from": mail_from,
-            "to": [email],
-            "subject": subject,
-            "text": body,
-            "html": html,
-        }
-    )
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = mail_from
+    msg["To"] = email
+    msg.attach(MIMEText(body, "plain"))
+    msg.attach(MIMEText(html, "html"))
+
+    with smtplib.SMTP(host, port, timeout=30) as server:
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(user, password)
+        server.sendmail(mail_from, [email], msg.as_string())
