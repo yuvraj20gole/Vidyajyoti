@@ -90,8 +90,23 @@ GitHub Pages cannot run login or a database. Use **Render** for the college demo
 | `DATABASE_URL` | PostgreSQL connection (linked from database) |
 | `FLASK_DEBUG` | `0` in production |
 | `ALLOWED_EMAIL_DOMAIN` | `vit.edu.in` |
+| `RESEND_API_KEY` | Resend API key for OTP emails (production) |
+| `MAIL_FROM` | Sender address, e.g. `Vidyajyoti <onboarding@resend.dev>` |
+| `MAIL_DEV_MODE` | `1` logs OTP to server logs instead of sending email |
 
 Copy [`.env.example`](.env.example) for local development.
+
+### Email OTP (registration)
+
+New users must verify their `@vit.edu.in` email before creating an account:
+
+1. Enter email → **Send OTP**
+2. Enter the 6-digit code → **Verify**
+3. Complete the form → **Create Account**
+
+**Local testing:** set `MAIL_DEV_MODE=1` — the OTP appears in the terminal where Flask runs.
+
+**Production:** create a free [Resend](https://resend.com) account, add `RESEND_API_KEY` and `MAIL_FROM` in Render → Environment, set `MAIL_DEV_MODE=0`, and redeploy.
 
 ---
 
@@ -99,7 +114,9 @@ Copy [`.env.example`](.env.example) for local development.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/auth/register` | POST | Create account (`@vit.edu.in` only) |
+| `/api/auth/otp/send` | POST | Send 6-digit email verification code |
+| `/api/auth/otp/verify` | POST | Verify OTP, returns `verification_token` |
+| `/api/auth/register` | POST | Create account (requires verified email) |
 | `/api/auth/login` | POST | Sign in |
 | `/logout` | GET | Sign out |
 | `/api/telemetry` | GET | Sensor readings |
@@ -126,6 +143,8 @@ vidyajyoti-tracker/
 ├── config.py
 ├── extensions.py
 ├── models/user.py
+├── models/email_otp.py
+├── services/email.py
 ├── routes/auth.py
 ├── routes/api.py
 ├── templates/auth.html

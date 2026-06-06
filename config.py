@@ -22,6 +22,10 @@ class Config:
     SESSION_COOKIE_SAMESITE = "Lax"
     REMEMBER_COOKIE_HTTPONLY = True
     PREFERRED_URL_SCHEME = "https"
+    RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+    MAIL_FROM = os.environ.get("MAIL_FROM", "Vidyajyoti <onboarding@resend.dev>")
+    MAIL_DEV_MODE = os.environ.get("MAIL_DEV_MODE", "0") in ("1", "true", "True")
+    OTP_EXPIRY_MINUTES = int(os.environ.get("OTP_EXPIRY_MINUTES", "10"))
 
     @staticmethod
     def init_app(app):

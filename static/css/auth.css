@@ -116,8 +116,23 @@ body::after{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
   padding:2px;transition:color .2s;}
 .eye-toggle:hover{color:var(--acc);}
 
-/* ── GRID 2 ── */
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+/* ── EMAIL + OTP ROW ── */
+.email-row{display:flex;gap:10px;align-items:stretch;}
+.email-input-wrap{flex:1;}
+.secondary-btn{flex-shrink:0;padding:0 16px;border-radius:8px;border:1px solid rgba(77,159,255,.35);
+  background:rgba(77,159,255,.12);color:var(--white);font-family:var(--fb);font-size:.75rem;
+  font-weight:600;letter-spacing:.5px;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.secondary-btn:hover:not(:disabled){background:rgba(77,159,255,.22);box-shadow:0 0 16px rgba(77,159,255,.15);}
+.secondary-btn:disabled{opacity:.5;cursor:default;}
+.otp-panel{margin-bottom:12px;}
+.otp-resend{font-family:var(--fm);font-size:.55rem;color:var(--dim);margin-top:6px;min-height:14px;}
+.verified-badge{display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:10px 14px;
+  border-radius:8px;border:1px solid rgba(0,229,160,.35);background:rgba(0,229,160,.1);
+  color:var(--grn);font-family:var(--fb);font-size:.78rem;font-weight:600;}
+.verified-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;
+  border-radius:50%;background:rgba(0,229,160,.2);font-size:12px;}
+.dev-hint{font-family:var(--fm);font-size:.55rem;color:var(--wrn);margin-top:6px;letter-spacing:.3px;}
+.submit-btn:disabled{opacity:.45;cursor:not-allowed;}
 
 /* ── PASSWORD STRENGTH ── */
 .pstr{margin-bottom:12px;display:none;}

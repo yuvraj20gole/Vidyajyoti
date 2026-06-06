@@ -23,6 +23,7 @@ def create_app(config_class=Config):
     app.register_blueprint(api_bp)
 
     with app.app_context():
+        import models.email_otp  # noqa: F401
         import models.user  # noqa: F401
         db.create_all()
 

@@ -1,6 +1,19 @@
-/* VIDYAJYOTI AUTH â€” login & register */
+/* VIDYAJYOTI AUTH — login & register */
 
 var VIT_DOMAIN = '@vit.edu.in';
+var emailVerified = false;
+var verificationToken = '';
+var otpSent = false;
+var resendTimer = null;
+var resendSeconds = 0;
+var mailDevMode = document.body.dataset.mailDev === '1';
+
+function motionAnimate(target, keyframes, options) {
+  if (typeof Motion !== 'undefined' && Motion.animate) {
+    return Motion.animate(target, keyframes, options);
+  }
+  return null;
+}
 
 (function () {
   var c = document.getElementById('starCanvas');
@@ -47,8 +60,25 @@ if (authCard && rightPanel) {
 }
 
 function switchMode(m) {
-  document.getElementById('panel-login').classList.toggle('active', m === 'login');
-  document.getElementById('panel-register').classList.toggle('active', m === 'register');
+  var loginPanel = document.getElementById('panel-login');
+  var registerPanel = document.getElementById('panel-register');
+  var outPanel = m === 'login' ? registerPanel : loginPanel;
+  var inPanel = m === 'login' ? loginPanel : registerPanel;
+
+  if (outPanel.classList.contains('active')) {
+    motionAnimate(outPanel, { opacity: [1, 0], x: [0, m === 'login' ? 20 : -20] }, { duration: 0.2 });
+    setTimeout(function () {
+      outPanel.classList.remove('active');
+      outPanel.style.opacity = '';
+      outPanel.style.transform = '';
+      inPanel.classList.add('active');
+      motionAnimate(inPanel, { opacity: [0, 1], x: [m === 'login' ? -20 : 20, 0] }, { duration: 0.3, easing: [0.22, 1, 0.36, 1] });
+    }, 180);
+  } else {
+    loginPanel.classList.toggle('active', m === 'login');
+    registerPanel.classList.toggle('active', m === 'register');
+  }
+
   document.getElementById('ms-login').classList.toggle('active', m === 'login');
   document.getElementById('ms-register').classList.toggle('active', m === 'register');
   document.getElementById('dot-login').classList.toggle('active', m === 'login');
@@ -56,7 +86,9 @@ function switchMode(m) {
 }
 
 function toggleCheck(id) {
-  document.getElementById(id).classList.toggle('checked');
+  var box = document.getElementById(id);
+  box.classList.toggle('checked');
+  motionAnimate(box, { scale: [1, 1.2, 1] }, { duration: 0.25, easing: 'ease-out' });
 }
 
 function togglePass(id, btn) {
@@ -89,6 +121,7 @@ function showErr(id, msg) {
   var e = document.getElementById(id);
   e.textContent = '\u26a0 ' + msg;
   e.classList.add('show');
+  motionAnimate(e, { opacity: [0, 1], y: [-4, 0] }, { duration: 0.2 });
   var inp = document.getElementById(id.replace('-err', ''));
   if (inp) inp.classList.add('error');
 }
@@ -117,6 +150,142 @@ async function postAuth(url, body) {
   return { ok: res.ok, status: res.status, data: data };
 }
 
+function resetEmailVerification() {
+  emailVerified = false;
+  verificationToken = '';
+  otpSent = false;
+  document.getElementById('r-btn').disabled = true;
+  document.getElementById('r-verified-badge').hidden = true;
+  document.getElementById('r-otp-panel').hidden = true;
+  document.getElementById('r-otp').value = '';
+  clearErr('r-otp-err');
+  var devHint = document.getElementById('r-dev-hint');
+  devHint.hidden = true;
+  devHint.textContent = '';
+}
+
+function setRegisterEnabled(enabled) {
+  document.getElementById('r-btn').disabled = !enabled;
+}
+
+function startResendCooldown(seconds) {
+  resendSeconds = seconds;
+  var resendEl = document.getElementById('r-otp-resend');
+  var sendBtn = document.getElementById('r-send-otp-btn');
+  sendBtn.disabled = true;
+
+  function tick() {
+    if (resendSeconds <= 0) {
+      sendBtn.disabled = emailVerified;
+      sendBtn.textContent = otpSent ? 'Resend OTP' : 'Send OTP';
+      resendEl.textContent = '';
+      if (resendTimer) clearInterval(resendTimer);
+      resendTimer = null;
+      return;
+    }
+    resendEl.textContent = 'Resend available in ' + resendSeconds + 's';
+    resendSeconds--;
+  }
+
+  tick();
+  if (resendTimer) clearInterval(resendTimer);
+  resendTimer = setInterval(tick, 1000);
+}
+
+function revealOtpPanel() {
+  var panel = document.getElementById('r-otp-panel');
+  panel.hidden = false;
+  motionAnimate(panel, { opacity: [0, 1], y: [-8, 0] }, { duration: 0.35, easing: [0.22, 1, 0.36, 1] });
+}
+
+function showVerifiedBadge() {
+  var badge = document.getElementById('r-verified-badge');
+  badge.hidden = false;
+  motionAnimate(badge, { opacity: [0, 1], scale: [0.9, 1] }, { duration: 0.35, easing: [0.22, 1, 0.36, 1] });
+  setRegisterEnabled(true);
+  document.getElementById('r-send-otp-btn').disabled = true;
+  document.getElementById('r-verify-otp-btn').disabled = true;
+  document.getElementById('r-email').readOnly = true;
+}
+
+document.getElementById('r-email').addEventListener('input', function () {
+  if (emailVerified || otpSent) resetEmailVerification();
+  document.getElementById('r-email').readOnly = false;
+  document.getElementById('r-send-otp-btn').disabled = false;
+  document.getElementById('r-send-otp-btn').textContent = 'Send OTP';
+  document.getElementById('r-verify-otp-btn').disabled = false;
+});
+
+document.getElementById('r-send-otp-btn').addEventListener('click', async function () {
+  clearErr('r-email-err');
+  var email = val('r-email').toLowerCase();
+  if (!isVitEmail(email)) {
+    showErr('r-email-err', 'Use your @vit.edu.in email address');
+    return;
+  }
+
+  var btn = document.getElementById('r-send-otp-btn');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  var result = await postAuth('/api/auth/otp/send', { email: email });
+
+  if (!result.ok) {
+    btn.disabled = false;
+    btn.textContent = otpSent ? 'Resend OTP' : 'Send OTP';
+    showErr('r-email-err', result.data.error || 'Could not send verification code');
+    return;
+  }
+
+  otpSent = true;
+  emailVerified = false;
+  verificationToken = '';
+  setRegisterEnabled(false);
+  btn.textContent = 'Resend OTP';
+  revealOtpPanel();
+  startResendCooldown(60);
+
+  var devHint = document.getElementById('r-dev-hint');
+  if (mailDevMode || result.data.dev_hint) {
+    devHint.hidden = false;
+    devHint.textContent = result.data.dev_hint || 'Dev mode: check server logs for the OTP code.';
+  }
+});
+
+document.getElementById('r-verify-otp-btn').addEventListener('click', async function () {
+  clearErr('r-otp-err');
+  var email = val('r-email').toLowerCase();
+  var otp = val('r-otp');
+
+  if (!isVitEmail(email)) {
+    showErr('r-email-err', 'Use your @vit.edu.in email address');
+    return;
+  }
+  if (otp.length !== 6 || !/^\d+$/.test(otp)) {
+    showErr('r-otp-err', 'Enter the 6-digit verification code');
+    return;
+  }
+
+  var btn = document.getElementById('r-verify-otp-btn');
+  btn.disabled = true;
+  btn.textContent = 'Verifying...';
+
+  var result = await postAuth('/api/auth/otp/verify', { email: email, otp: otp });
+
+  if (!result.ok) {
+    btn.disabled = false;
+    btn.textContent = 'Verify';
+    showErr('r-otp-err', result.data.error || 'Verification failed');
+    return;
+  }
+
+  emailVerified = true;
+  verificationToken = result.data.verification_token || '';
+  btn.textContent = 'Verified';
+  showVerifiedBadge();
+  motionAnimate(document.getElementById('r-btn'), { scale: [1, 1.02, 1] }, { duration: 0.3 });
+});
+
 document.getElementById('loginForm').addEventListener('submit', async function (e) {
   e.preventDefault();
   clearErr('l-email-err');
@@ -133,6 +302,7 @@ document.getElementById('loginForm').addEventListener('submit', async function (
   btn.disabled = true;
   btn.classList.add('loading');
   txt.innerHTML = '&#9881; Processing...';
+  motionAnimate(btn, { scale: [1, 0.98] }, { duration: 0.15 });
 
   var result = await postAuth('/api/auth/login', {
     email: email,
@@ -151,14 +321,20 @@ document.getElementById('loginForm').addEventListener('submit', async function (
   btn.classList.remove('loading');
   btn.classList.add('success');
   txt.innerHTML = '&#10003;&nbsp; Welcome back!';
+  motionAnimate(btn, { scale: [1, 1.02, 1] }, { duration: 0.3 });
   window.location.href = result.data.redirect || '/dashboard';
 });
 
 document.getElementById('registerForm').addEventListener('submit', async function (e) {
   e.preventDefault();
-  ['r-name-err', 'r-email-err', 'r-pass-err', 'r-confirm-err', 'r-terms-err'].forEach(clearErr);
+  ['r-name-err', 'r-email-err', 'r-pass-err', 'r-confirm-err', 'r-terms-err', 'r-otp-err'].forEach(clearErr);
   var email = val('r-email').toLowerCase();
   var ok = true;
+
+  if (!emailVerified || !verificationToken) {
+    showErr('r-email-err', 'Verify your email with OTP before creating an account');
+    ok = false;
+  }
   if (val('r-name').length < 2) { showErr('r-name-err', 'Name must be at least 2 characters'); ok = false; }
   if (!isVitEmail(email)) { showErr('r-email-err', 'Use your @vit.edu.in email address'); ok = false; }
   if (val('r-pass').length < 8) { showErr('r-pass-err', 'Password must be at least 8 characters'); ok = false; }
@@ -179,15 +355,16 @@ document.getElementById('registerForm').addEventListener('submit', async functio
     email: email,
     password: val('r-pass'),
     full_name: val('r-name'),
-    station_id: val('r-station'),
-    remember: true
+    verification_token: verificationToken,
+    remember: document.getElementById('r-rem-check').classList.contains('checked')
   });
 
   if (!result.ok) {
     btn.disabled = false;
     btn.classList.remove('loading');
+    setRegisterEnabled(emailVerified);
     txt.textContent = 'Create Account';
-    var errId = result.status === 403 ? 'r-email-err' : (result.status === 409 ? 'r-email-err' : 'r-pass-err');
+    var errId = result.status === 403 || result.status === 409 ? 'r-email-err' : 'r-pass-err';
     showErr(errId, result.data.error || 'Registration failed');
     return;
   }
@@ -195,5 +372,6 @@ document.getElementById('registerForm').addEventListener('submit', async functio
   btn.classList.remove('loading');
   btn.classList.add('success');
   txt.innerHTML = '&#10003;&nbsp; Account created!';
+  motionAnimate(btn, { scale: [1, 1.02, 1] }, { duration: 0.3 });
   window.location.href = result.data.redirect || '/dashboard';
 });

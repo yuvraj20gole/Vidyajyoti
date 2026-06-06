@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vidyajyoti Tracker â€” Login</title>
+<title>Vidyajyoti Tracker — Login</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
 </head>
-<body>
+<body data-mail-dev="{{ '1' if mail_dev_mode else '0' }}">
 
 <div id="cosmos">
   <canvas id="starCanvas"></canvas>
@@ -52,7 +52,7 @@
       <div class="form-panel active" id="panel-login">
         <div class="form-title">Welcome back</div>
         <div class="form-sub">Sign in to access the Vidyajyoti ground station dashboard</div>
-        <p class="vit-hint">VIT email required â€” use your <strong>@vit.edu.in</strong> address only.</p>
+        <p class="vit-hint">VIT email required — use your <strong>@vit.edu.in</strong> address only.</p>
         <form id="loginForm" novalidate>
           <div class="field">
             <label class="field-label">Email Address</label>
@@ -90,30 +90,43 @@
         <div class="form-sub">Create your operator account for the Vidyajyoti satellite network</div>
         <p class="vit-hint">Registration is limited to <strong>@vit.edu.in</strong> email addresses.</p>
         <form id="registerForm" novalidate>
-          <div class="grid-2">
-            <div class="field">
-              <label class="field-label">Full Name</label>
-              <div class="input-wrap">
-                <span class="input-icon">&#128100;</span>
-                <input type="text" id="r-name" placeholder="Your name" autocomplete="name">
-              </div>
-              <div class="field-error" id="r-name-err"></div>
+          <div class="field">
+            <label class="field-label">Full Name</label>
+            <div class="input-wrap">
+              <span class="input-icon">&#128100;</span>
+              <input type="text" id="r-name" placeholder="Your name" autocomplete="name">
             </div>
-            <div class="field">
-              <label class="field-label">Station ID</label>
-              <div class="input-wrap">
-                <span class="input-icon">&#128752;</span>
-                <input type="text" id="r-station" placeholder="MUM-GS-01">
-              </div>
-            </div>
+            <div class="field-error" id="r-name-err"></div>
           </div>
           <div class="field">
             <label class="field-label">Email Address</label>
-            <div class="input-wrap">
-              <span class="input-icon">&#128225;</span>
-              <input type="email" id="r-email" placeholder="name@vit.edu.in" autocomplete="email">
+            <div class="email-row">
+              <div class="input-wrap email-input-wrap">
+                <span class="input-icon">&#128225;</span>
+                <input type="email" id="r-email" placeholder="name@vit.edu.in" autocomplete="email">
+              </div>
+              <button type="button" class="secondary-btn" id="r-send-otp-btn">Send OTP</button>
             </div>
             <div class="field-error" id="r-email-err"></div>
+            <p class="dev-hint" id="r-dev-hint" hidden></p>
+          </div>
+          <div class="otp-panel" id="r-otp-panel" hidden>
+            <div class="field">
+              <label class="field-label">Verification Code</label>
+              <div class="email-row">
+                <div class="input-wrap email-input-wrap">
+                  <span class="input-icon">&#128274;</span>
+                  <input type="text" id="r-otp" placeholder="6-digit code" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+                </div>
+                <button type="button" class="secondary-btn" id="r-verify-otp-btn">Verify</button>
+              </div>
+              <div class="field-error" id="r-otp-err"></div>
+              <p class="otp-resend" id="r-otp-resend"></p>
+            </div>
+          </div>
+          <div class="verified-badge" id="r-verified-badge" hidden>
+            <span class="verified-icon">&#10003;</span>
+            <span>Email verified</span>
           </div>
           <div class="field">
             <label class="field-label">Password</label>
@@ -147,7 +160,11 @@
             <div class="check-lbl">I agree to the Terms of Service and Privacy Policy for the Vidyajyoti Ground Station Network</div>
           </div>
           <div class="field-error" id="r-terms-err" style="margin-top:-12px;margin-bottom:14px;"></div>
-          <button type="submit" class="submit-btn" id="r-btn">
+          <div class="check-row" onclick="toggleCheck('r-rem-check')">
+            <div class="check-box" id="r-rem-check"><span class="ck">&#10003;</span></div>
+            <div class="check-lbl">Remember me</div>
+          </div>
+          <button type="submit" class="submit-btn" id="r-btn" disabled>
             <span class="btn-shimmer"></span>
             <span id="r-btn-txt">Create Account</span>
           </button>
@@ -160,6 +177,7 @@
 
 <div id="footer">VIDYAJYOTI SAT-01 &nbsp;&middot;&nbsp; STUDENT SATELLITE PROGRAM &nbsp;&middot;&nbsp; MUMBAI, INDIA</div>
 
+<script src="https://cdn.jsdelivr.net/npm/motion@11.11.17/dist/motion.js"></script>
 <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
 </body>
 </html>
