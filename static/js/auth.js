@@ -1,4 +1,4 @@
-/* VIDYAJYOTI AUTH — login & register */
+/* VIDYAJYOTI AUTH - login & register */
 
 var VIT_DOMAIN = '@vit.edu.in';
 var emailVerified = false;
