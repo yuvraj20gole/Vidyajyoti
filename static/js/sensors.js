@@ -2,7 +2,7 @@
    TELEMETRY & ORBIT DATA
    Uses Flask API locally; client-side fallback on GitHub Pages
 ==================================================== */
-var useApi = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+var useApi = !location.hostname.endsWith('github.io');
 var D = { temp: 31.4, hum: 78, pres: 1008, wind: 18, uv: 7.2, aqi: 142, dew: 24.1, vis: 6.2, cloud: 68, rain: 2, age: 0 };
 var wxConds = ['Partly Cloudy', 'Mostly Sunny', 'Overcast', 'Hazy', 'Humid'];
 var tempHistory = [];

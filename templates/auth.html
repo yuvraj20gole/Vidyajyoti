@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vidyajyoti Tracker — Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+</head>
+<body>
+
+<div id="cosmos">
+  <canvas id="starCanvas"></canvas>
+  <div class="neb" style="width:55vw;height:55vw;top:-15%;left:-10%;background:radial-gradient(circle,rgba(20,40,120,.38),transparent 70%);"></div>
+  <div class="neb" style="width:45vw;height:45vw;bottom:-12%;right:-8%;background:radial-gradient(circle,rgba(60,20,100,.3),transparent 70%);"></div>
+  <div class="neb" style="width:35vw;height:35vw;top:30%;left:58%;background:radial-gradient(circle,rgba(0,60,120,.22),transparent 70%);"></div>
+</div>
+
+<div id="app">
+  <div class="auth-card" id="authCard">
+    <div class="left">
+      <div class="orbit-wrap">
+        <div class="orbit-ring"><div class="orbit-dot"></div></div>
+        <div class="orbit-ring"><div class="orbit-dot"></div></div>
+        <div class="orbit-ring"><div class="orbit-dot"></div></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#1a3a6a,#061028);border:1px solid rgba(77,159,255,.3);box-shadow:0 0 40px rgba(77,159,255,.2);"></div>
+      </div>
+      <div class="left-content">
+        <div class="planet"></div>
+        <div class="logo-title">VIDYA<span>JYOTI</span></div>
+        <div class="logo-sub">Ground Station Network</div>
+        <div class="stat-grid">
+          <div class="stat-box"><div class="stat-val">412<span class="stat-unit">km</span></div><div class="stat-lbl">Altitude</div></div>
+          <div class="stat-box"><div class="stat-val">7.66<span class="stat-unit">km/s</span></div><div class="stat-lbl">Velocity</div></div>
+          <div class="stat-box"><div class="stat-val">6<span class="stat-unit">sats</span></div><div class="stat-lbl">Tracked</div></div>
+          <div class="stat-box"><div class="stat-val">89<span class="stat-unit">%</span></div><div class="stat-lbl">Battery</div></div>
+        </div>
+        <div class="mode-dots">
+          <div class="mode-dot active" id="dot-login" onclick="switchMode('login')"></div>
+          <div class="mode-dot" id="dot-register" onclick="switchMode('register')"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right" id="rightPanel">
+      <div class="mode-switch">
+        <button type="button" class="ms-btn active" id="ms-login" onclick="switchMode('login')">Sign In</button>
+        <button type="button" class="ms-btn" id="ms-register" onclick="switchMode('register')">Register</button>
+      </div>
+
+      <div class="form-panel active" id="panel-login">
+        <div class="form-title">Welcome back</div>
+        <div class="form-sub">Sign in to access the Vidyajyoti ground station dashboard</div>
+        <p class="vit-hint">VIT email required — use your <strong>@vit.edu.in</strong> address only.</p>
+        <form id="loginForm" novalidate>
+          <div class="field">
+            <label class="field-label">Email Address</label>
+            <div class="input-wrap">
+              <span class="input-icon">&#128225;</span>
+              <input type="email" id="l-email" placeholder="name@vit.edu.in" autocomplete="email">
+            </div>
+            <div class="field-error" id="l-email-err"></div>
+          </div>
+          <div class="field">
+            <label class="field-label">Password</label>
+            <div class="input-wrap">
+              <span class="input-icon">&#128272;</span>
+              <input type="password" id="l-pass" placeholder="Your password" autocomplete="current-password">
+              <button type="button" class="eye-toggle" onclick="togglePass('l-pass',this)">&#128065;</button>
+            </div>
+            <div class="field-error" id="l-pass-err"></div>
+          </div>
+          <div class="meta-row">
+            <div class="check-row" style="margin-bottom:0;" onclick="toggleCheck('rem-check')">
+              <div class="check-box" id="rem-check"><span class="ck">&#10003;</span></div>
+              <div class="check-lbl">Remember me</div>
+            </div>
+          </div>
+          <button type="submit" class="submit-btn" id="l-btn">
+            <span class="btn-shimmer"></span>
+            <span id="l-btn-txt">Sign In</span>
+          </button>
+          <p class="switch-p">No account yet? <span class="switch-link" onclick="switchMode('register')">Create one &rarr;</span></p>
+        </form>
+      </div>
+
+      <div class="form-panel" id="panel-register">
+        <div class="form-title">Join the network</div>
+        <div class="form-sub">Create your operator account for the Vidyajyoti satellite network</div>
+        <p class="vit-hint">Registration is limited to <strong>@vit.edu.in</strong> email addresses.</p>
+        <form id="registerForm" novalidate>
+          <div class="grid-2">
+            <div class="field">
+              <label class="field-label">Full Name</label>
+              <div class="input-wrap">
+                <span class="input-icon">&#128100;</span>
+                <input type="text" id="r-name" placeholder="Your name" autocomplete="name">
+              </div>
+              <div class="field-error" id="r-name-err"></div>
+            </div>
+            <div class="field">
+              <label class="field-label">Station ID</label>
+              <div class="input-wrap">
+                <span class="input-icon">&#128752;</span>
+                <input type="text" id="r-station" placeholder="MUM-GS-01">
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label">Email Address</label>
+            <div class="input-wrap">
+              <span class="input-icon">&#128225;</span>
+              <input type="email" id="r-email" placeholder="name@vit.edu.in" autocomplete="email">
+            </div>
+            <div class="field-error" id="r-email-err"></div>
+          </div>
+          <div class="field">
+            <label class="field-label">Password</label>
+            <div class="input-wrap">
+              <span class="input-icon">&#128272;</span>
+              <input type="password" id="r-pass" placeholder="Min 8 characters" autocomplete="new-password" oninput="updateStrength(this.value)">
+              <button type="button" class="eye-toggle" onclick="togglePass('r-pass',this)">&#128065;</button>
+            </div>
+            <div class="field-error" id="r-pass-err"></div>
+          </div>
+          <div class="pstr" id="pstr">
+            <div class="pstr-bars">
+              <div class="pstr-bar" id="pb1"></div>
+              <div class="pstr-bar" id="pb2"></div>
+              <div class="pstr-bar" id="pb3"></div>
+              <div class="pstr-bar" id="pb4"></div>
+            </div>
+            <span class="pstr-label" id="pstr-label" style="color:var(--dim)">Too short</span>
+          </div>
+          <div class="field">
+            <label class="field-label">Confirm Password</label>
+            <div class="input-wrap">
+              <span class="input-icon">&#128273;</span>
+              <input type="password" id="r-confirm" placeholder="Repeat password" autocomplete="new-password">
+              <button type="button" class="eye-toggle" onclick="togglePass('r-confirm',this)">&#128065;</button>
+            </div>
+            <div class="field-error" id="r-confirm-err"></div>
+          </div>
+          <div class="check-row" onclick="toggleCheck('terms-check')">
+            <div class="check-box" id="terms-check"><span class="ck">&#10003;</span></div>
+            <div class="check-lbl">I agree to the Terms of Service and Privacy Policy for the Vidyajyoti Ground Station Network</div>
+          </div>
+          <div class="field-error" id="r-terms-err" style="margin-top:-12px;margin-bottom:14px;"></div>
+          <button type="submit" class="submit-btn" id="r-btn">
+            <span class="btn-shimmer"></span>
+            <span id="r-btn-txt">Create Account</span>
+          </button>
+          <p class="switch-p">&larr; Already have an account? <span class="switch-link" onclick="switchMode('login')">Sign in</span></p>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="footer">VIDYAJYOTI SAT-01 &nbsp;&middot;&nbsp; STUDENT SATELLITE PROGRAM &nbsp;&middot;&nbsp; MUMBAI, INDIA</div>
+
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+</body>
+</html>

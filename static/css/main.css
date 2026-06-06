@@ -50,6 +50,8 @@ body{color:var(--txt);font-family:var(--fb);display:flex;flex-direction:column;}
 .tb-utc{color:var(--acc2);}
 .tb-sep{opacity:.3;}
 .tb-right{display:flex;align-items:center;gap:10px;}
+.logout-link{text-decoration:none;color:inherit;font-family:var(--fm);font-size:.58rem;letter-spacing:1px;transition:color .2s,border-color .2s;}
+.logout-link:hover{color:var(--acc2);border-color:var(--b2);}
 .spill{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:18px;
   background:var(--glass);border:1px solid var(--b1);font-family:var(--fm);font-size:.6rem;color:var(--dim);}
 .sdot{width:6px;height:6px;border-radius:50%;animation:blink 1.8s ease-in-out infinite;}

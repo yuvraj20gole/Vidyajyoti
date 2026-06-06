@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: vidyajyoti-tracker
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: ALLOWED_EMAIL_DOMAIN
+        value: vit.edu.in
+      - key: DATABASE_URL
+        fromDatabase:
+          name: vidyajyoti-db
+          property: connectionString
+
+databases:
+  - name: vidyajyoti-db
+    plan: free

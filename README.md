@@ -2,32 +2,34 @@
 
 A web-based ground station dashboard for the **Vidyajyoti** student satellite program. It visualizes environmental telemetry, orbital parameters, and mission data through an interactive three-screen interface.
 
-**Location:** Mumbai, India · **Data:** Simulated demo telemetry (replaceable with live feeds)
+**Location:** Mumbai, India · **Access:** `@vit.edu.in` email only
 
 ---
 
 ## Overview
 
-Vidyajyoti Tracker is a full-stack demo application that mimics a real satellite operations console. Operators can monitor weather-style sensors at the ground station, track satellite position on world and regional maps, and review a consolidated mission dashboard.
-
-The project is structured for both **local development** (Python backend serving JSON APIs) and **static hosting** (GitHub Pages with in-browser demo data).
+Vidyajyoti Tracker is a full-stack satellite operations console with **VIT-only authentication**. After signing in, operators can monitor ground station sensors, track satellites on interactive maps, and review a mission dashboard.
 
 ### Features
 
 | Screen | Purpose |
 |--------|---------|
-| **Telemetry** | Temperature, humidity, pressure, wind, UV, AQI, and 24h climate history (Mumbai) |
-| **Orbit Tracker** | Latitude, longitude, altitude, velocity, ground track, world map, 3D globe, polar plot |
-| **Dashboard** | Summary metrics, India coverage map, signal quality gauge, orbit stats |
+| **Login / Register** | Secure access — only `@vit.edu.in` emails |
+| **Telemetry** | Temperature, humidity, pressure, wind, UV, AQI, 24h climate history |
+| **Orbit Tracker** | Lat/lon/alt/velocity, world map, 3D globe, polar plot |
+| **Dashboard** | Summary metrics, India map, signal gauge, orbit stats |
 
 ### Architecture
 
 ```
-Browser (HTML / CSS / JavaScript)
-        │
-        ├── Local dev ──► Flask API ──► Simulated data generators
-        │
-        └── GitHub Pages ──► Static docs/ ──► Client-side demo data
+Browser
+   │
+   ├── GET /login          → Auth page (register / sign in)
+   ├── GET /dashboard      → Protected tracker UI
+   └── GET /api/*          → Protected JSON APIs
+           │
+           ▼
+      Flask + SQLAlchemy (SQLite local / PostgreSQL on Render)
 ```
 
 ---
@@ -36,26 +38,11 @@ Browser (HTML / CSS / JavaScript)
 
 | Layer | Technology |
 |-------|------------|
-| Backend | Python 3, Flask |
+| Backend | Python 3, Flask, Flask-Login, SQLAlchemy |
+| Database | SQLite (local) · PostgreSQL (Render production) |
 | Frontend | HTML, CSS, JavaScript |
 | Maps & 3D | Leaflet, Globe.gl, Three.js |
-| Typography | Google Fonts (Syne, Space Grotesk, JetBrains Mono) |
-
----
-
-## Project structure
-
-```
-vidyajyoti-tracker/
-├── main.py              # Flask entry point
-├── build.py             # Builds docs/ for GitHub Pages
-├── requirements.txt
-├── data/                # Telemetry & orbit generators
-├── routes/              # REST API (/api/telemetry, /api/orbit, /api/satellites)
-├── templates/           # Dashboard HTML
-├── static/              # CSS and JavaScript modules
-└── docs/                # Pre-built static site for GitHub Pages
-```
+| Production | Gunicorn on [Render](https://render.com) with HTTPS |
 
 ---
 
@@ -63,51 +50,97 @@ vidyajyoti-tracker/
 
 ```bash
 pip install -r requirements.txt
+cp .env.example .env   # optional — edit SECRET_KEY
 python main.py
 ```
 
-Open **http://127.0.0.1:5001** in your browser.
+Open **http://127.0.0.1:5001** → redirects to **/login**.
 
-Port **5001** is used to avoid conflicts with macOS AirPlay on port 5000.
+Register with any `@vit.edu.in` email (e.g. `student@vit.edu.in`) for local testing.
+
+Port **5001** avoids macOS AirPlay conflict on port 5000.
 
 ---
 
-## Deploy (GitHub Pages)
+## Deploy to Render (official HTTPS URL)
 
-GitHub Pages hosts **static files only** — no Python runtime on the server. The live site uses client-side simulated data; Python source remains in the repo for development and review.
+GitHub Pages cannot run login or a database. Use **Render** for the college demo.
 
-1. Build the static site:
-   ```bash
-   python build.py
-   ```
-2. Push the repository (include the `docs/` folder).
-3. Enable Pages: **Settings → Pages →** branch **`main`**, folder **`/docs`**.
+### 1. Create Render service
 
-Live URL: `https://<username>.github.io/<repo-name>/`
+1. Push this repo to GitHub.
+2. Go to [render.com](https://render.com) → **New → Blueprint** → connect repo.
+3. Render reads [`render.yaml`](render.yaml) and creates:
+   - Web service (`gunicorn main:app`)
+   - PostgreSQL database
+4. Deploy. Your URL will be like **`https://vidyajyoti-tracker.onrender.com`**.
 
-**First push to a new repo:**
+### 2. Custom domain (e.g. vidyajyoti.com)
+
+1. Buy a domain from any registrar.
+2. In Render → your web service → **Settings → Custom Domains** → add `vidyajyoti.com` and `www.vidyajyoti.com`.
+3. Add the DNS records Render shows at your registrar.
+4. HTTPS (Let's Encrypt) is provisioned automatically.
+
+### Environment variables (Render)
+
+| Variable | Purpose |
+|----------|---------|
+| `SECRET_KEY` | Session signing (auto-generated on Render) |
+| `DATABASE_URL` | PostgreSQL connection (linked from database) |
+| `FLASK_DEBUG` | `0` in production |
+| `ALLOWED_EMAIL_DOMAIN` | `vit.edu.in` |
+
+Copy [`.env.example`](.env.example) for local development.
+
+---
+
+## API endpoints (authenticated)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/auth/register` | POST | Create account (`@vit.edu.in` only) |
+| `/api/auth/login` | POST | Sign in |
+| `/logout` | GET | Sign out |
+| `/api/telemetry` | GET | Sensor readings |
+| `/api/orbit` | GET | Satellite position |
+| `/api/satellites` | GET | Satellite catalog |
+
+---
+
+## GitHub Pages (legacy static mirror)
+
+The `docs/` folder is a **static preview without login**. For the official college site, use Render + custom domain.
 
 ```bash
-git remote add origin https://github.com/<username>/<repo-name>.git
-git push -u origin main
+python build.py   # rebuild docs/ after frontend changes
 ```
-
-After editing `static/` or `templates/`, run `python build.py` again before pushing.
 
 ---
 
-## API endpoints (local only)
+## Project structure
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /api/telemetry` | Ground station sensor readings |
-| `GET /api/orbit` | Satellite position and pass countdown |
-| `GET /api/satellites` | Tracked satellite catalog |
+```
+vidyajyoti-tracker/
+├── main.py
+├── config.py
+├── extensions.py
+├── models/user.py
+├── routes/auth.py
+├── routes/api.py
+├── templates/auth.html
+├── templates/index.html
+├── static/css/auth.css
+├── static/js/auth.js
+├── Procfile
+├── render.yaml
+└── instance/          # SQLite DB (local, gitignored)
+```
 
 ---
 
 ## Notes
 
-- **Online demo:** Maps and fonts load from CDNs; an internet connection is required.
-- **Legacy file:** `vidyajyoti-tracker.html` is a single-file backup of an earlier version.
-- **Production backend:** Not required for the hosted demo. Use Render or similar only if you later connect real telemetry or a database.
+- Only emails ending in **`@vit.edu.in`** can register or sign in (enforced server-side).
+- Maps require internet (CDN tiles).
+- Set `FLASK_DEBUG=0` in production.
