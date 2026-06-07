@@ -71,6 +71,7 @@ document.querySelectorAll('.tabn').forEach(function (btn) {
     if (t === 3 && !dashChartReady) initDashChart();
     if (t === 2 && worldMapReady) scheduleMapResize();
     if (t === 3 && indiaMapReady) scheduleMapResize();
+    if (t === 4 && typeof loadSettingsAccount === 'function') loadSettingsAccount();
   });
 });
 document.querySelectorAll('.sat-row').forEach(function (r) {

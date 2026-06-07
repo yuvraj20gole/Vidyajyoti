@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vidyajyoti Tracker</title>
+<script>
+(function () {
+  var theme = localStorage.getItem('vj-theme');
+  if (theme === 'light' || theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
@@ -33,6 +41,7 @@
       <button class="tabn active" data-tab="1"><span class="tabn-num">01</span>Telemetry</button>
       <button class="tabn" data-tab="2"><span class="tabn-num">02</span>Orbit Tracker</button>
       <button class="tabn" data-tab="3"><span class="tabn-num">03</span>Dashboard</button>
+      <button class="tabn" data-tab="4"><span class="tabn-num">04</span>Settings</button>
     </nav>
     <div class="tb-meta">
       <span class="tb-utc" id="utcClock">2024/05/01 09:10:01</span>
@@ -356,6 +365,63 @@
       </div>
     </div>
 
+    <!-- TAB 4: SETTINGS -->
+    <div class="tab-panel" id="tab4">
+      <div class="settings-wrap">
+        <div class="settings-header">
+          <div class="settings-title">Settings</div>
+          <div class="settings-sub">Manage appearance and account security</div>
+        </div>
+
+        <section class="settings-card">
+          <div class="settings-card-title">Account</div>
+          <div class="settings-row">
+            <span class="settings-label">Signed in as</span>
+            <span class="settings-value" id="settings-email">—</span>
+          </div>
+        </section>
+
+        <section class="settings-card">
+          <div class="settings-card-title">Appearance</div>
+          <div class="settings-row settings-row-toggle">
+            <div>
+              <div class="settings-label">Theme</div>
+              <div class="settings-hint" id="theme-hint">Dark mode enabled</div>
+            </div>
+            <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle light and dark mode">
+              <span class="theme-toggle-track">
+                <span class="theme-toggle-thumb" id="theme-thumb"></span>
+              </span>
+              <span class="theme-toggle-text" id="theme-label">Dark</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="settings-card">
+          <div class="settings-card-title">Change password</div>
+          <form id="changePasswordForm" class="settings-form" novalidate>
+            <div class="settings-field">
+              <label class="settings-label" for="cp-current">Current password</label>
+              <input type="password" id="cp-current" class="settings-input" autocomplete="current-password" placeholder="Enter current password">
+              <div class="settings-error" id="cp-current-err"></div>
+            </div>
+            <div class="settings-field">
+              <label class="settings-label" for="cp-new">New password</label>
+              <input type="password" id="cp-new" class="settings-input" autocomplete="new-password" placeholder="Min 8 characters">
+              <div class="settings-error" id="cp-new-err"></div>
+            </div>
+            <div class="settings-field">
+              <label class="settings-label" for="cp-confirm">Confirm new password</label>
+              <input type="password" id="cp-confirm" class="settings-input" autocomplete="new-password" placeholder="Repeat new password">
+              <div class="settings-error" id="cp-confirm-err"></div>
+            </div>
+            <div class="settings-success" id="cp-success" hidden></div>
+            <button type="submit" class="settings-btn" id="cp-btn">Update password</button>
+          </form>
+        </section>
+      </div>
+    </div>
+
   </div><!-- /center -->
 
   <!-- RIGHT PANEL -->
@@ -414,5 +480,6 @@
 <script src="{{ url_for('static', filename='js/sensors.js') }}"></script>
 <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
 <script src="{{ url_for('static', filename='js/maps.js') }}"></script>
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 </body>
 </html>

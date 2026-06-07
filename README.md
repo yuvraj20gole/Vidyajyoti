@@ -101,6 +101,7 @@ Copy [`.env.example`](.env.example) for local development.
 | `/api/auth/register` | POST | Create account (`@vit.edu.in` only) |
 | `/api/auth/login` | POST | Sign in (registered users only) |
 | `/api/auth/session` | GET | Check active session |
+| `/api/auth/change-password` | POST | Update password (logged in) |
 | `/logout` | GET | Sign out |
 | `/api/telemetry` | GET | Sensor readings |
 | `/api/orbit` | GET | Satellite position |

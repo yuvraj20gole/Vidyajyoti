@@ -104,6 +104,28 @@ def login():
     return jsonify({"ok": True, "redirect": url_for("dashboard")})
 
 
+@auth_bp.post("/api/auth/change-password")
+@login_required
+def change_password():
+    data = request.get_json(silent=True) or {}
+    current_password = data.get("current_password") or ""
+    new_password = data.get("new_password") or ""
+    confirm_password = data.get("confirm_password") or ""
+
+    if not current_user.check_password(current_password):
+        return jsonify({"error": "Current password is incorrect."}), 401
+    if len(new_password) < 8:
+        return jsonify({"error": "New password must be at least 8 characters."}), 400
+    if new_password != confirm_password:
+        return jsonify({"error": "New passwords do not match."}), 400
+    if current_user.check_password(new_password):
+        return jsonify({"error": "Choose a password different from your current one."}), 400
+
+    current_user.set_password(new_password)
+    db.session.commit()
+    return jsonify({"ok": True, "message": "Password updated successfully."})
+
+
 @auth_bp.get("/logout")
 def logout():
     logout_user()
