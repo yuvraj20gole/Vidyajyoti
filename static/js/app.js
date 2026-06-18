@@ -18,10 +18,23 @@ function nudge(v, d, mn, mx) {
 function tickClock() {
   var clk = el('utcClock');
   if (!clk) return;
-  var n = new Date();
-  var s = n.getUTCFullYear() + '/' + pad(n.getUTCMonth() + 1) + '/' + pad(n.getUTCDate()) + ' ' +
-    pad(n.getUTCHours()) + ':' + pad(n.getUTCMinutes()) + ':' + pad(n.getUTCSeconds());
-  clk.textContent = s;
+  var now = new Date();
+  var parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).formatToParts(now);
+  var get = function (type) {
+    var p = parts.find(function (x) { return x.type === type; });
+    return p ? p.value : '00';
+  };
+  clk.textContent = 'IST ' + get('year') + '/' + get('month') + '/' + get('day') + ' ' +
+    get('hour') + ':' + get('minute') + ':' + get('second');
 }
 setInterval(tickClock, 1000);
 tickClock();
@@ -84,13 +97,45 @@ document.querySelectorAll('.tabn').forEach(function (btn) {
     if (t === 4 && typeof loadSettingsAccount === 'function') loadSettingsAccount();
   });
 });
+function switchToTab(tabNum) {
+  var btn = document.querySelector('.tabn[data-tab="' + tabNum + '"]');
+  if (btn) btn.click();
+}
+
+function focusSatellite(name) {
+  if (!name) return;
+  switchToTab(2);
+  setTimeout(function () {
+    if (!worldMapReady && typeof initWorldMap === 'function') initWorldMap();
+    setTimeout(function () {
+      if (typeof selectSatellite === 'function') selectSatellite(name);
+      document.querySelectorAll('.sat-row').forEach(function (x) {
+        x.classList.toggle('active', x.getAttribute('data-sat') === name);
+      });
+    }, worldMapReady ? 50 : 800);
+  }, 80);
+}
+
 document.querySelectorAll('.sat-row').forEach(function (r) {
   r.addEventListener('click', function () {
-    document.querySelectorAll('.sat-row').forEach(function (x) { x.classList.remove('active'); });
-    r.classList.add('active');
-    var nmEl = r.querySelector('.sat-nm');
-    if (nmEl && typeof selectSatellite === 'function') {
-      selectSatellite(nmEl.textContent.trim());
+    var name = r.getAttribute('data-sat') || (r.querySelector('.sat-nm') && r.querySelector('.sat-nm').textContent.trim());
+    focusSatellite(name);
+  });
+});
+
+document.querySelectorAll('.launch-item[data-launch]').forEach(function (item) {
+  item.addEventListener('click', function () {
+    var info = item.getAttribute('data-launch');
+    var purpose = el('sic-purpose');
+    var code = el('sic-code');
+    var nameEl = el('sic-name');
+    if (purpose) purpose.textContent = info;
+    if (code) code.textContent = 'UPCOMING LAUNCH';
+    if (nameEl) {
+      var mission = item.querySelector('.li-mission');
+      nameEl.innerHTML = mission ? mission.textContent : 'Launch';
     }
+    document.querySelectorAll('.launch-item').forEach(function (x) { x.classList.remove('launch-sel'); });
+    item.classList.add('launch-sel');
   });
 });

@@ -45,7 +45,7 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
       <button class="tabn" data-tab="4"><span class="tabn-num">04</span>Settings</button>
     </nav>
     <div class="tb-meta">
-      <span class="tb-utc" id="utcClock">2024/05/01 09:10:01</span>
+      <span class="tb-utc" id="utcClock">IST --:--:--</span>
       <span class="tb-sep">|</span>
       <span id="nextPassLabel">Next Pass: 03:47</span>
       <span class="tb-sep">|</span>
@@ -92,32 +92,32 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
       <div class="pstitle">Tracked Satellites</div>
     </div>
     <div class="sat-list">
-      <div class="sat-row active au au1">
+      <div class="sat-row active au au1" data-sat="VIDYAJYOTI">
         <div class="sat-ico">&#128752;</div>
         <div style="flex:1;min-width:0;"><div class="sat-nm">VIDYAJYOTI</div><div class="sat-sub">SAT-01 &middot; 412 km</div></div>
         <div class="sat-badge leo">LEO</div>
       </div>
-      <div class="sat-row au au2">
+      <div class="sat-row au au2" data-sat="HO-68">
         <div class="sat-ico grn">&#128225;</div>
         <div style="flex:1;min-width:0;"><div class="sat-nm">HO-68</div><div class="sat-sub">HAMSAT &middot; 7,308 km</div></div>
         <div class="sat-badge meo">MEO</div>
       </div>
-      <div class="sat-row au au3">
+      <div class="sat-row au au3" data-sat="VO-52">
         <div class="sat-ico pur">&#128301;</div>
         <div style="flex:1;min-width:0;"><div class="sat-nm">VO-52</div><div class="sat-sub">HAMSAT &middot; 627 km</div></div>
         <div class="sat-badge leo">LEO</div>
       </div>
-      <div class="sat-row au au4">
+      <div class="sat-row au au4" data-sat="SO-50">
         <div class="sat-ico org">&#127758;</div>
         <div style="flex:1;min-width:0;"><div class="sat-nm">SO-50</div><div class="sat-sub">SaudiSat &middot; 703 km</div></div>
         <div class="sat-badge leo">LEO</div>
       </div>
-      <div class="sat-row au au5">
+      <div class="sat-row au au5" data-sat="AO-27">
         <div class="sat-ico wrn">&#128246;</div>
         <div style="flex:1;min-width:0;"><div class="sat-nm">AO-27</div><div class="sat-sub">AMRAD &middot; 779 km</div></div>
         <div class="sat-badge leo">LEO</div>
       </div>
-      <div class="sat-row au au6">
+      <div class="sat-row au au6" data-sat="FO-29">
         <div class="sat-ico muted">&#128760;</div>
         <div style="flex:1;min-width:0;"><div class="sat-nm">FO-29</div><div class="sat-sub">FujiSat &middot; 887 km</div></div>
         <div class="sat-badge leo">LEO</div>
@@ -418,8 +418,8 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
     <!-- Sat info -->
     <div class="sic">
       <div class="sic-glow"></div>
-      <div class="sic-code">SAT-01 &middot; LEO &middot; ISRO STUDENT PROGRAM</div>
-      <div class="sic-name">VIDYAJYOTI<br>SAT-01</div>
+      <div class="sic-code" id="sic-code">SAT-01 &middot; LEO &middot; ISRO STUDENT PROGRAM</div>
+      <div class="sic-name" id="sic-name">VIDYAJYOTI<br>SAT-01</div>
       <div class="sic-grid">
         <div class="sic-m"><div><span class="sic-mv" id="rm-alt">412</span><span class="sic-mu">KM</span></div><div class="sic-ml">Altitude</div></div>
         <div class="sic-m"><div><span class="sic-mv" id="rm-vel">7.3</span><span class="sic-mu">km/s</span></div><div class="sic-ml">Velocity</div></div>
@@ -428,7 +428,7 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
       </div>
       <div style="margin-top:8px;padding:8px 10px;background:var(--glass);border:1px solid var(--b1);border-radius:6px;">
         <div style="font-family:var(--fm);font-size:.48rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Purpose</div>
-        <div style="font-family:var(--fb);font-size:.65rem;color:var(--txt);">Earth Observation &middot; Climate Monitoring &middot; Amateur Radio</div>
+        <div style="font-family:var(--fb);font-size:.65rem;color:var(--txt);" id="sic-purpose">Earth Observation &middot; Climate Monitoring &middot; Amateur Radio</div>
       </div>
     </div>
 
@@ -444,13 +444,13 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
 
     <!-- Upcoming launches -->
     <div class="sec-hdr">Upcoming Launches <span class="sec-action">All</span></div>
-    <div class="launch-item"><div class="li-date"><div class="li-mon">JUN</div><div class="li-day">28</div></div>
+    <div class="launch-item" data-launch="SpaceX Falcon 9 — 22 Starlink satellites. Launch from Cape Canaveral, Florida. Private commercial mission."><div class="li-date"><div class="li-mon">JUN</div><div class="li-day">28</div></div>
       <div style="flex:1;"><div class="li-mission">SpaceX &mdash; Starlink</div><div class="li-rocket">Falcon 9 &middot; Cape Canaveral</div></div>
       <div class="li-badge li-priv">PRIV</div></div>
-    <div class="launch-item"><div class="li-date"><div class="li-mon">JUL</div><div class="li-day">04</div></div>
+    <div class="launch-item" data-launch="ISRO PSLV-C60 carrying NVS-02 navigation satellite. Launch from Satish Dhawan Space Centre, Sriharikota. Government mission."><div class="li-date"><div class="li-mon">JUL</div><div class="li-day">04</div></div>
       <div style="flex:1;"><div class="li-mission">ISRO PSLV-C60</div><div class="li-rocket">PSLV-XL &middot; Satish Dhawan</div></div>
       <div class="li-badge li-gov">GOVT</div></div>
-    <div class="launch-item"><div class="li-date"><div class="li-mon">AUG</div><div class="li-day">12</div></div>
+    <div class="launch-item" data-launch="ChinaSat 6E communications satellite aboard Long March 3B from Xichang Satellite Launch Center."><div class="li-date"><div class="li-mon">AUG</div><div class="li-day">12</div></div>
       <div style="flex:1;"><div class="li-mission">ChinaSat 6E</div><div class="li-rocket">Long March 3B &middot; Xichang</div></div>
       <div class="li-badge li-mil">MIL</div></div>
 
@@ -465,7 +465,7 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
   </div>
 
 </div><!-- /app -->
-<script src="https://unpkg.com/satellite.js@5.0.0/lib/satellite.js"></script>
+<script src="{{ url_for('static', filename='vendor/satellite/satellite.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/orbit-engine.js') }}"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 <script src="{{ url_for('static', filename='js/sensors.js') }}"></script>

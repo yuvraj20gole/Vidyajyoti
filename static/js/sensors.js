@@ -161,8 +161,23 @@ async function loadPasses() {
     var res = await apiFetch('/api/passes');
     if (res && res.ok && typeof renderPassTable === 'function') {
       renderPassTable(await res.json());
+      if (typeof updateRightPanel === 'function' && selectedSatName) {
+        updateRightPanel(selectedSatName);
+      }
+      return;
     }
   } catch (e) { /* ignore */ }
+  if (typeof renderPassTable === 'function') {
+    var fallback = [
+      { name: 'VIDYAJYOTI', is_simulated: true, az: '-', el: '-', dir: 'SIM', next_pass: 'Simulated', footprint: '-', alt_km: 412, doppler: '-', orbit_min: 92, color: '#4d9fff', status: 'simulated' },
+      { name: 'VO-52', is_simulated: false, az: '-', el: '-', dir: '-', next_pass: 'Loading...', footprint: '-', alt_km: '-', doppler: '-', orbit_min: '-', color: '#9d6fff', status: 'unknown' },
+      { name: 'SO-50', is_simulated: false, az: '-', el: '-', dir: '-', next_pass: 'Loading...', footprint: '-', alt_km: '-', doppler: '-', orbit_min: '-', color: '#ff7c3a', status: 'unknown' },
+      { name: 'AO-27', is_simulated: false, az: '-', el: '-', dir: '-', next_pass: 'Loading...', footprint: '-', alt_km: '-', doppler: '-', orbit_min: '-', color: '#ffc444', status: 'unknown' },
+      { name: 'FO-29', is_simulated: false, az: '-', el: '-', dir: '-', next_pass: 'Loading...', footprint: '-', alt_km: '-', doppler: '-', orbit_min: '-', color: '#ff4466', status: 'unknown' },
+      { name: 'HO-68', is_simulated: false, az: '-', el: '-', dir: '-', next_pass: 'Loading...', footprint: '-', alt_km: '-', doppler: '-', orbit_min: '-', color: '#00e5a0', status: 'unknown' }
+    ];
+    renderPassTable(fallback);
+  }
 }
 
 window.updatePassCountdown = function () {

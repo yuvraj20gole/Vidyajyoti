@@ -12,19 +12,28 @@ api_bp = Blueprint("api", __name__, url_prefix="/api")
 @api_bp.get("/telemetry")
 @login_required
 def telemetry():
-    return jsonify(get_telemetry())
+    try:
+        return jsonify(get_telemetry())
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 @api_bp.get("/telemetry/history")
 @login_required
 def telemetry_history():
-    return jsonify(get_telemetry_history())
+    try:
+        return jsonify(get_telemetry_history())
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 @api_bp.get("/weather/cities")
 @login_required
 def weather_cities():
-    return jsonify(get_cities_weather())
+    try:
+        return jsonify(get_cities_weather())
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 @api_bp.get("/orbit")
@@ -36,10 +45,16 @@ def orbit():
 @api_bp.get("/satellites")
 @login_required
 def satellites():
-    return jsonify(get_satellites())
+    try:
+        return jsonify(get_satellites())
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 @api_bp.get("/passes")
 @login_required
 def passes():
-    return jsonify(get_passes())
+    try:
+        return jsonify(get_passes())
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500

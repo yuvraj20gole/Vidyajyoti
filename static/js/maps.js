@@ -17,6 +17,24 @@ var passRows = [];
 var orbitDataBanner = '';
 var trackRefreshAt = 0;
 
+var FALLBACK_SATS = [
+  { name: 'VIDYAJYOTI', norad_id: null, color: '#4d9fff', is_simulated: true, status: 'simulated', tle_available: false },
+  { name: 'VO-52', norad_id: 32791, color: '#9d6fff', is_simulated: false, status: 'unknown', tle_available: false },
+  { name: 'SO-50', norad_id: 27607, color: '#ff7c3a', is_simulated: false, status: 'unknown', tle_available: false },
+  { name: 'AO-27', norad_id: 22825, color: '#ffc444', is_simulated: false, status: 'unknown', tle_available: false },
+  { name: 'FO-29', norad_id: 24208, color: '#ff4466', is_simulated: false, status: 'unknown', tle_available: false },
+  { name: 'HO-68', norad_id: 36122, color: '#00e5a0', is_simulated: false, status: 'unknown', tle_available: false }
+];
+
+var SAT_META = {
+  VIDYAJYOTI: { code: 'SAT-01 \u00b7 LEO \u00b7 SIMULATED', label: 'VIDYAJYOTI<br>SAT-01', purpose: 'Earth Observation \u00b7 Climate Monitoring \u00b7 Amateur Radio (simulated)' },
+  'VO-52': { code: 'HAMSAT \u00b7 LEO \u00b7 CelesTrak', label: 'VO-52<br>HAMSAT', purpose: 'Amateur radio communications \u00b7 India' },
+  'SO-50': { code: 'SaudiSat \u00b7 LEO \u00b7 CelesTrak', label: 'SO-50<br>SaudiSat-1C', purpose: 'Amateur radio repeater satellite' },
+  'AO-27': { code: 'AMRAD \u00b7 LEO \u00b7 CelesTrak', label: 'AO-27<br>AMRAD-OSCAR', purpose: 'Amateur radio communications' },
+  'FO-29': { code: 'FujiSat \u00b7 LEO \u00b7 CelesTrak', label: 'FO-29<br>Fuji-OSCAR', purpose: 'Amateur radio \u00b7 Store-and-forward' },
+  'HO-68': { code: 'XW-1 \u00b7 LEO \u00b7 CelesTrak', label: 'HO-68<br>XW-1', purpose: 'Amateur radio \u00b7 Hope Oscar' }
+};
+
 var DARK_TILES = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 var LIGHT_TILES = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 var OSM_TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -224,10 +242,42 @@ function updateSatHighlight() {
   });
 }
 
+function updateRightPanel(name) {
+  var meta = SAT_META[name] || { code: name, label: name, purpose: 'Tracked satellite' };
+  var pos = null;
+  var sat = findSat(name);
+  if (sat) pos = satPosition(sat);
+  var passRow = null;
+  for (var i = 0; i < passRows.length; i++) {
+    if (passRows[i].name === name) { passRow = passRows[i]; break; }
+  }
+  function s(id, v) { var e = el(id); if (e) e.textContent = v; }
+  var codeEl = el('sic-code');
+  var nameEl = el('sic-name');
+  var purposeEl = el('sic-purpose');
+  if (codeEl) codeEl.textContent = meta.code;
+  if (nameEl) nameEl.innerHTML = meta.label;
+  if (purposeEl) purposeEl.textContent = meta.purpose;
+  if (pos) {
+    s('rm-alt', Math.round(pos.alt_km));
+    s('rm-vel', (pos.velocity || 0).toFixed(1));
+  }
+  if (passRow && passRow.orbit_min && passRow.orbit_min !== '-') {
+    s('rm-per', passRow.orbit_min);
+  } else if (typeof VjOrbit !== 'undefined' && VjOrbit.orbitPeriodMinutes) {
+    s('rm-per', Math.round(VjOrbit.orbitPeriodMinutes(name)));
+  }
+  document.querySelectorAll('.launch-item').forEach(function (x) { x.classList.remove('launch-sel'); });
+}
+
 function selectSatellite(name) {
   selectedSatName = name;
   updateSatHighlight();
   updateMttOverlay();
+  updateRightPanel(name);
+  document.querySelectorAll('.sat-row').forEach(function (r) {
+    r.classList.toggle('active', r.getAttribute('data-sat') === name);
+  });
   document.querySelectorAll('.pt-row').forEach(function (r) {
     r.classList.toggle('sel', r.getAttribute('data-sat') === name);
   });
@@ -322,13 +372,13 @@ async function initWorldMap() {
     }
   }
   if (!sats.length) {
-    setOrbitBanner('Orbit data temporarily unavailable.', true);
-    setMapHint('', false);
-    return;
+    sats = FALLBACK_SATS.slice();
+    setOrbitBanner('Orbit API unavailable \u2014 retrying. Map shows catalog; tracks load when TLE is ready.', true);
+    tleOk = false;
   }
   SATS2 = sats;
   if (typeof VjOrbit !== 'undefined') VjOrbit.initFromApi(sats);
-  if (!tleOk) setOrbitBanner('Some satellite TLE data unavailable — showing partial catalog.', true);
+  if (!tleOk) setOrbitBanner('Some satellite TLE data unavailable \u2014 showing partial catalog.', true);
   else setOrbitBanner('', false);
 
   worldMapReady = true;

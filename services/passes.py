@@ -12,14 +12,32 @@ GS_LAT = float(os.environ.get("GS_LAT", "19.08"))
 GS_LON = float(os.environ.get("GS_LON", "72.88"))
 GS_ELEVATION_M = float(os.environ.get("GS_ELEVATION_M", "14"))
 
-_loader = Loader(os.path.join(os.path.dirname(__file__), "..", "instance", "skyfield"))
-_ts = _loader.timescale()
-_ground = wgs84.latlon(GS_LAT, GS_LON, elevation_m=GS_ELEVATION_M)
-
 DEG = "\u00b0"
 NA = "-"
 UP = "\u2191"
 DOWN = "\u2193"
+
+_ts = None
+_ground = None
+
+
+def _skyfield_ready():
+    global _ts, _ground
+    if _ts is not None and _ground is not None:
+        return True
+    try:
+        base = os.environ.get("SKYFIELD_DATA", "")
+        if not base:
+            base = os.path.join(
+                os.path.dirname(__file__), "..", "instance", "skyfield"
+            )
+        os.makedirs(base, exist_ok=True)
+        loader = Loader(base)
+        _ts = loader.timescale()
+        _ground = wgs84.latlon(GS_LAT, GS_LON, elevation_m=GS_ELEVATION_M)
+        return True
+    except Exception:
+        return False
 
 
 def _maidenhead(lat: float, lon: float) -> str:
@@ -50,6 +68,8 @@ def _orbit_period_minutes(line2: str) -> int:
 
 
 def _find_next_pass(satellite: EarthSatellite, hours: int = 48):
+    if not _skyfield_ready():
+        return None
     t0 = _ts.now()
     t1 = _ts.from_datetime(
         t0.utc_datetime().replace(tzinfo=timezone.utc) + timedelta(hours=hours)
@@ -91,6 +111,23 @@ def _empty_row(sat: dict, **overrides) -> dict:
 
 
 def get_passes() -> list[dict]:
+    if not _skyfield_ready():
+        rows = []
+        for sat in SATELLITE_CATALOG:
+            if sat["is_simulated"]:
+                rows.append(_empty_row(
+                    sat,
+                    dir="SIM",
+                    next_pass="Simulated",
+                    alt_km=412,
+                    doppler="Simulated",
+                    orbit_min=92,
+                    status="simulated",
+                ))
+            else:
+                rows.append(_empty_row(sat, next_pass="Pass calc unavailable", status="error"))
+        return rows
+
     rows = []
     for sat in SATELLITE_CATALOG:
         if sat["is_simulated"]:

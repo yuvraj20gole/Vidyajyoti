@@ -263,7 +263,8 @@ html[data-theme="light"] .settings-success{background:rgba(5,150,105,.1);border-
 .sb-val{color:var(--acc2);font-weight:500;}
 
 /* Pass table */
-#passTable{flex-shrink:0;background:var(--surface-deep);border-top:1px solid var(--b1);overflow-x:auto;}
+#passTable{flex-shrink:0;background:var(--surface-deep);border-top:1px solid var(--b1);overflow-x:auto;min-height:200px;max-height:220px;}
+#passTableBody{min-height:140px;}
 .pt-header{display:grid;grid-template-columns:90px 65px 60px 50px 70px 65px 60px 60px 75px;
   padding:5px 12px;font-family:var(--fm);font-size:.53rem;letter-spacing:1px;color:var(--dim);
   text-transform:uppercase;border-bottom:1px solid var(--divider-soft);min-width:570px;background:var(--surface-row);}
@@ -348,6 +349,7 @@ html[data-theme="light"] #vjSimBadge{background:rgba(217,119,6,.08);border-color
 
 .launch-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--divider-faint);cursor:pointer;transition:background .15s;}
 .launch-item:hover{background:var(--glass);}
+.launch-item.launch-sel{background:var(--accent-soft);border-left:2px solid var(--acc);}
 .li-date{width:36px;flex-shrink:0;text-align:center;background:var(--glass2);border:1px solid var(--b1);border-radius:5px;padding:4px;}
 .li-mon{font-family:var(--fm);font-size:.47rem;color:var(--acc);text-transform:uppercase;letter-spacing:1px;}
 .li-day{font-family:var(--fh);font-size:.9rem;font-weight:800;color:var(--white);line-height:1.1;}
