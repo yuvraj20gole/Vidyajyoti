@@ -1,4 +1,4 @@
-/* SETTINGS — theme + change password */
+/* SETTINGS ï¿½ theme + change password */
 
 var THEME_KEY = 'vj-theme';
 
@@ -10,6 +10,7 @@ function applyTheme(theme) {
   var isLight = theme === 'light';
   document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
   localStorage.setItem(THEME_KEY, isLight ? 'light' : 'dark');
+  window._vjThemeCache = null;
 
   var label = document.getElementById('theme-label');
   var hint = document.getElementById('theme-hint');
@@ -17,6 +18,9 @@ function applyTheme(theme) {
   if (label) label.textContent = isLight ? 'Light' : 'Dark';
   if (hint) hint.textContent = isLight ? 'Light mode enabled' : 'Dark mode enabled';
   if (toggle) toggle.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+
+  if (typeof window.redrawVjCharts === 'function') window.redrawVjCharts();
+  if (typeof window.refreshMapTheme === 'function') window.refreshMapTheme();
 }
 
 function initThemeToggle() {
@@ -52,7 +56,7 @@ function loadSettingsAccount() {
     .then(function (data) {
       if (!data) return;
       var emailEl = document.getElementById('settings-email');
-      if (emailEl) emailEl.textContent = data.email || '—';
+      if (emailEl) emailEl.textContent = data.email || 'ï¿½';
     });
 }
 

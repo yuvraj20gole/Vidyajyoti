@@ -3,3 +3,5 @@ flask-sqlalchemy>=3.1.0
 flask-login>=0.6.3
 gunicorn>=22.0.0
 psycopg2-binary>=2.9.9
+requests>=2.31.0
+skyfield>=1.49

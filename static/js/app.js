@@ -26,11 +26,19 @@ function tickClock() {
 setInterval(tickClock, 1000);
 tickClock();
 
+function vjIsLightTheme() {
+  return document.documentElement.getAttribute('data-theme') === 'light';
+}
+
 (function () {
   var c = el('bgCvs');
   if (!c) return;
-  c.width = window.innerWidth;
-  c.height = window.innerHeight;
+  function resize() {
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
   var ctx = c.getContext('2d');
   var stars = [];
   for (var i = 0; i < 280; i++) {
@@ -45,14 +53,16 @@ tickClock();
   }
   (function draw() {
     ctx.clearRect(0, 0, c.width, c.height);
-    stars.forEach(function (s) {
-      s.a += s.da;
-      if (s.a > 1 || s.a < 0) s.da *= -1;
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fillStyle = (s.blue ? 'rgba(140,190,255,' : 'rgba(255,255,255,') + s.a + ')';
-      ctx.fill();
-    });
+    if (!vjIsLightTheme()) {
+      stars.forEach(function (s) {
+        s.a += s.da;
+        if (s.a > 1 || s.a < 0) s.da *= -1;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = (s.blue ? 'rgba(140,190,255,' : 'rgba(255,255,255,') + s.a + ')';
+        ctx.fill();
+      });
+    }
     requestAnimationFrame(draw);
   })();
 })();
@@ -82,11 +92,5 @@ document.querySelectorAll('.sat-row').forEach(function (r) {
     if (nmEl && typeof selectSatellite === 'function') {
       selectSatellite(nmEl.textContent.trim());
     }
-  });
-});
-document.querySelectorAll('.pt-row').forEach(function (r) {
-  r.addEventListener('click', function () {
-    document.querySelectorAll('.pt-row').forEach(function (x) { x.classList.remove('sel'); });
-    r.classList.add('sel');
   });
 });

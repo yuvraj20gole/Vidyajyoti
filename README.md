@@ -38,7 +38,8 @@ Browser
 
 | Layer | Technology |
 |-------|------------|
-| Backend | Python 3, Flask, Flask-Login, SQLAlchemy |
+| Backend | Python 3, Flask, Flask-Login, SQLAlchemy, Skyfield, Requests |
+| Live data | Open-Meteo, CelesTrak TLE, satellite.js (SGP4) |
 | Database | SQLite (local) · PostgreSQL (Render production) |
 | Frontend | HTML, CSS, JavaScript |
 | Maps & 3D | Leaflet, Globe.gl, Three.js |
@@ -103,9 +104,22 @@ Copy [`.env.example`](.env.example) for local development.
 | `/api/auth/session` | GET | Check active session |
 | `/api/auth/change-password` | POST | Update password (logged in) |
 | `/logout` | GET | Sign out |
-| `/api/telemetry` | GET | Sensor readings |
-| `/api/orbit` | GET | Satellite position |
-| `/api/satellites` | GET | Satellite catalog |
+| `/api/telemetry` | GET | Live weather — Open-Meteo (Mumbai) |
+| `/api/telemetry/history` | GET | 24h hourly climate history for charts |
+| `/api/weather/cities` | GET | Live weather for India map cities |
+| `/api/orbit` | GET | Vidyajyoti simulated position (mission data not public) |
+| `/api/satellites` | GET | Satellite catalog + CelesTrak TLE lines |
+| `/api/passes` | GET | Upcoming passes from Mumbai ground station (Skyfield) |
+
+### Live data sources
+
+| Data | Source |
+|------|--------|
+| Weather, 24h history, AQI | [Open-Meteo](https://open-meteo.com/) |
+| Satellite TLE | [CelesTrak](https://celestrak.org/) |
+| Pass predictions | [Skyfield](https://rhodesmill.org/skyfield/) (SGP4) |
+| Orbit animation (browser) | [satellite.js](https://github.com/shashwatak/satellite-js) SGP4 |
+| Vidyajyoti telemetry/orbit | Simulated until mission data is released |
 
 ---
 
@@ -126,6 +140,10 @@ vidyajyoti-tracker/
 ├── main.py
 ├── config.py
 ├── extensions.py
+├── services/weather.py
+├── services/tle.py
+├── services/passes.py
+├── data/generators.py
 ├── models/user.py
 ├── routes/auth.py
 ├── routes/api.py
@@ -143,5 +161,6 @@ vidyajyoti-tracker/
 ## Notes
 
 - Only emails ending in **`@vit.edu.in`** can register or sign in (enforced server-side).
-- Maps require internet (CDN tiles).
+- Maps require internet (CDN tiles + live API fetches).
+- Amateur satellite TLEs are cached server-side (default 6 hours).
 - Set `FLASK_DEBUG=0` in production.
