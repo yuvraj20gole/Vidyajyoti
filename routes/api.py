@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify
 from flask_login import login_required
 
 from data.generators import get_orbit
+from services.jsonutil import json_safe
 from services.passes import get_passes
 from services.tle import get_satellites
 from services.weather import get_cities_weather, get_telemetry, get_telemetry_history
@@ -13,7 +14,7 @@ api_bp = Blueprint("api", __name__, url_prefix="/api")
 @login_required
 def telemetry():
     try:
-        return jsonify(get_telemetry())
+        return jsonify(json_safe(get_telemetry()))
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 
@@ -22,7 +23,7 @@ def telemetry():
 @login_required
 def telemetry_history():
     try:
-        return jsonify(get_telemetry_history())
+        return jsonify(json_safe(get_telemetry_history()))
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 
@@ -31,7 +32,7 @@ def telemetry_history():
 @login_required
 def weather_cities():
     try:
-        return jsonify(get_cities_weather())
+        return jsonify(json_safe(get_cities_weather()))
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 
@@ -39,14 +40,17 @@ def weather_cities():
 @api_bp.get("/orbit")
 @login_required
 def orbit():
-    return jsonify(get_orbit())
+    try:
+        return jsonify(json_safe(get_orbit()))
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 @api_bp.get("/satellites")
 @login_required
 def satellites():
     try:
-        return jsonify(get_satellites())
+        return jsonify(json_safe(get_satellites()))
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 
@@ -55,6 +59,6 @@ def satellites():
 @login_required
 def passes():
     try:
-        return jsonify(get_passes())
+        return jsonify(json_safe(get_passes()))
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500

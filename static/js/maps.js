@@ -22,7 +22,7 @@ var FALLBACK_SATS = [
   { name: 'VO-52', norad_id: 32791, color: '#9d6fff', is_simulated: false, status: 'unknown', tle_available: false },
   { name: 'SO-50', norad_id: 27607, color: '#ff7c3a', is_simulated: false, status: 'unknown', tle_available: false },
   { name: 'AO-27', norad_id: 22825, color: '#ffc444', is_simulated: false, status: 'unknown', tle_available: false },
-  { name: 'FO-29', norad_id: 24208, color: '#ff4466', is_simulated: false, status: 'unknown', tle_available: false },
+  { name: 'FO-29', norad_id: 24278, color: '#ff4466', is_simulated: false, status: 'unknown', tle_available: false },
   { name: 'HO-68', norad_id: 36122, color: '#00e5a0', is_simulated: false, status: 'unknown', tle_available: false }
 ];
 
@@ -57,12 +57,17 @@ function vjAccentColor() {
 
 function satIcon(color, selected) {
   var size = selected ? 34 : 28;
-  var src = (typeof window.VJ_SAT_ICON !== 'undefined') ? window.VJ_SAT_ICON : '/static/images/satellite.svg';
+  var stroke = selected ? 2.2 : 1.6;
   return L.divIcon({
     className: 'sat-marker-icon',
     html: '<div class="sat-marker-wrap' + (selected ? ' sel' : '') + '" style="color:' + color + '">' +
-      '<img src="' + src + '" width="' + size + '" height="' + size + '" alt="satellite">' +
-      '</div>',
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="' + size + '" height="' + size + '" aria-hidden="true">' +
+      '<rect x="14" y="6" width="4" height="20" rx="1" fill="' + color + '"/>' +
+      '<rect x="4" y="12" width="24" height="3" rx="1" fill="' + color + '" opacity="0.85"/>' +
+      '<rect x="2" y="10" width="4" height="7" rx="0.5" fill="' + color + '" opacity="0.7"/>' +
+      '<rect x="26" y="10" width="4" height="7" rx="0.5" fill="' + color + '" opacity="0.7"/>' +
+      '<circle cx="16" cy="16" r="3" fill="' + color + '" stroke="#fff" stroke-width="' + stroke + '"/>' +
+      '</svg></div>',
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2]
   });
@@ -174,7 +179,10 @@ function satPosition(sat, date) {
     var p = VjOrbit.propagate(sat.name, date);
     if (p) return p;
   }
-  return { lat: 0, lon: 0, alt_km: sat.alt || 400, velocity: 0, heading: 0 };
+  if (sat.is_simulated && typeof OR !== 'undefined') {
+    return { lat: OR.lat, lon: OR.lon, alt_km: OR.alt, velocity: OR.vel, heading: 0 };
+  }
+  return null;
 }
 
 function footprintRadiusM(altKm) {
@@ -203,6 +211,7 @@ function updateMttOverlay() {
   var sat = findSat(selectedSatName);
   if (!sat) return;
   var pos = satPosition(sat);
+  if (!pos) return;
   var angles = typeof VjOrbit !== 'undefined'
     ? VjOrbit.lookAngles(GS_LAT, GS_LON, pos.lat, pos.lon, pos.alt_km)
     : { az: 0, el: 0 };
@@ -325,7 +334,9 @@ function setupWorldMapLayers() {
       var prevTrack = L.polyline([], { color: sat.color, weight: 1, opacity: 0.28, dashArray: '4 8' }).addTo(worldLeaflet);
       var trackLine = L.polyline([], { color: sat.color, weight: 2.2, opacity: 0.75, dashArray: '8 5' }).addTo(worldLeaflet);
       var footprint = L.circle([0, 0], { radius: footprintRadiusM(400), color: sat.color, fillColor: sat.color, fillOpacity: 0.05, weight: 1, dashArray: '4 6' }).addTo(worldLeaflet);
-      var marker = L.marker([0, 0], { icon: satIcon(sat.color, sat.name === selectedSatName) }).addTo(worldLeaflet);
+      var marker = L.marker([GS_LAT, GS_LON], { icon: satIcon(sat.color, sat.name === selectedSatName) }).addTo(worldLeaflet);
+      var startPos = satPosition(sat, date);
+      if (startPos) marker.setLatLng([startPos.lat, startPos.lon]);
       marker.on('click', function () { selectSatellite(sat.name); });
       marker.bindPopup(function () {
         return satPopupHtml(sat, satPosition(sat));
@@ -366,15 +377,20 @@ async function initWorldMap() {
         if (active < 2) tleOk = false;
       } else {
         tleOk = false;
+        sats = (typeof VjOrbit !== 'undefined' && VjOrbit.embeddedCatalog)
+          ? VjOrbit.embeddedCatalog()
+          : FALLBACK_SATS.slice();
       }
     } catch (e) {
       tleOk = false;
     }
   }
   if (!sats.length) {
-    sats = FALLBACK_SATS.slice();
-    setOrbitBanner('Orbit API unavailable \u2014 retrying. Map shows catalog; tracks load when TLE is ready.', true);
-    tleOk = false;
+    sats = (typeof VjOrbit !== 'undefined' && VjOrbit.embeddedCatalog)
+      ? VjOrbit.embeddedCatalog()
+      : FALLBACK_SATS.slice();
+    setOrbitBanner('Orbit API unavailable \u2014 using bundled TLE catalog.', true);
+    tleOk = true;
   }
   SATS2 = sats;
   if (typeof VjOrbit !== 'undefined') VjOrbit.initFromApi(sats);
@@ -393,6 +409,7 @@ async function initWorldMap() {
         var lyr = satLayers[sat.name];
         if (!lyr) return;
         var pos = satPosition(sat, date);
+        if (!pos) return;
         lyr.marker.setLatLng([pos.lat, pos.lon]);
         lyr.footprint.setLatLng([pos.lat, pos.lon]);
         lyr.footprint.setRadius(footprintRadiusM(pos.alt_km));
@@ -442,6 +459,13 @@ function initGlobe() {
   updateGlobeData();
 }
 
+function sanitizeGlobePath(coords) {
+  if (!coords || !coords.length) return [];
+  return coords.filter(function (pt) {
+    return pt && pt.length >= 2 && isFinite(pt[0]) && isFinite(pt[1]);
+  });
+}
+
 function updateGlobeData() {
   if (!globeInstance) return;
   var date = new Date();
@@ -449,6 +473,7 @@ function updateGlobeData() {
   var paths = [];
   SATS2.forEach(function (sat) {
     var p = satPosition(sat, date);
+    if (!p) return;
     var meta = typeof VjOrbit !== 'undefined' ? VjOrbit.getMeta(sat.name) : sat;
     var simNote = meta && meta.is_simulated ? '<br><em>Simulated</em>' : '';
     points.push({
@@ -459,16 +484,23 @@ function updateGlobeData() {
       label: '<b>' + sat.name + '</b><br>' + p.alt_km.toFixed(1) + ' km' + simNote
     });
     if (typeof VjOrbit !== 'undefined') {
-      var track = VjOrbit.buildGroundTrack(sat.name, date, 180);
-      paths.push({
-        name: sat.name,
-        color: sat.color,
-        coords: track.map(function (pt) { return [pt[0], pt[1]]; })
-      });
+      var track = sanitizeGlobePath(VjOrbit.buildGroundTrack(sat.name, date, 180));
+      if (track.length >= 2) {
+        paths.push({
+          name: sat.name,
+          color: sat.color,
+          coords: track
+        });
+      }
     }
   });
-  globeInstance.pointsData(points);
-  globeInstance.pathsData(paths);
+  try {
+    globeInstance.pointsData(points);
+    globeInstance.pathsData(paths);
+  } catch (e) {
+    globeInstance.pointsData(points);
+    globeInstance.pathsData([]);
+  }
 }
 
 function setMapMode(mode, btn) {

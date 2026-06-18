@@ -149,8 +149,7 @@ async function updateOrbit() {
         applyOrbit(await res.json());
         return;
       }
-      if (useApi) return;
-    } catch (e) { return; }
+    } catch (e) { /* use client fallback */ }
   }
   updateOrbitClient();
 }

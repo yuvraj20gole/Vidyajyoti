@@ -1,10 +1,13 @@
 """CelesTrak TLE fetch and cache for amateur satellites."""
 
 import os
+import re
 import time
 from typing import Any
 
 import requests
+
+from data.tle_fallbacks import fallback_tle
 
 TLE_CACHE_TTL = int(os.environ.get("TLE_CACHE_TTL", "21600"))
 
@@ -35,7 +38,7 @@ SATELLITE_CATALOG = [
     },
     {
         "name": "FO-29",
-        "norad_id": 24208,
+        "norad_id": 24278,
         "color": "#ff4466",
         "is_simulated": False,
     },
@@ -48,26 +51,76 @@ SATELLITE_CATALOG = [
 ]
 
 _tle_cache: dict[int, tuple[float, dict[str, str] | None]] = {}
+_group_cache: tuple[float, dict[int, dict[str, str]]] | None = None
+
+_NORAD_RE = re.compile(r"^1\s+(\d+)U")
+
+
+def _parse_tle_block(lines: list[str]) -> dict[str, str] | None:
+    if len(lines) < 3:
+        return None
+    return {"name": lines[0].strip(), "line1": lines[1].strip(), "line2": lines[2].strip()}
+
+
+def _norad_from_line1(line1: str) -> int | None:
+    match = _NORAD_RE.match(line1.strip())
+    if not match:
+        return None
+    return int(match.group(1))
+
+
+def _fetch_amateur_group() -> dict[int, dict[str, str]]:
+    global _group_cache
+    now = time.time()
+    if _group_cache and now - _group_cache[0] < TLE_CACHE_TTL:
+        return _group_cache[1]
+
+    catalog_ids = {sat["norad_id"] for sat in SATELLITE_CATALOG if sat["norad_id"]}
+    found: dict[int, dict[str, str]] = {}
+    url = "https://celestrak.org/NORAD/elements/gp.php?GROUP=amateur&FORMAT=tle"
+    try:
+        resp = requests.get(url, timeout=25, headers={"User-Agent": "VidyajyotiTracker/1.0"})
+        resp.raise_for_status()
+        raw = [ln.rstrip() for ln in resp.text.splitlines()]
+        i = 0
+        while i + 2 < len(raw):
+            block = [raw[i], raw[i + 1], raw[i + 2]]
+            parsed = _parse_tle_block(block)
+            if parsed:
+                norad_id = _norad_from_line1(parsed["line1"])
+                if norad_id in catalog_ids:
+                    found[norad_id] = parsed
+            i += 3
+    except requests.RequestException:
+        found = {}
+
+    _group_cache = (now, found)
+    return found
 
 
 def _fetch_tle(norad_id: int) -> dict[str, str] | None:
+    group = _fetch_amateur_group()
+    if norad_id in group:
+        return group[norad_id]
+
     url = f"https://celestrak.org/NORAD/elements/gp.php?CATNR={norad_id}&FORMAT=TLE"
     try:
-        resp = requests.get(url, timeout=20, headers={"User-Agent": "VidyajyotiTracker/1.0"})
+        resp = requests.get(url, timeout=15, headers={"User-Agent": "VidyajyotiTracker/1.0"})
         resp.raise_for_status()
         lines = [ln.strip() for ln in resp.text.strip().splitlines() if ln.strip()]
-        if len(lines) < 3:
-            return None
-        return {"name": lines[0], "line1": lines[1], "line2": lines[2]}
+        return _parse_tle_block(lines[:3])
     except requests.RequestException:
         return None
 
 
 def get_tle(norad_id: int) -> dict[str, str] | None:
+    bundled = fallback_tle(norad_id)
     now = time.time()
     if norad_id in _tle_cache and now - _tle_cache[norad_id][0] < TLE_CACHE_TTL:
-        return _tle_cache[norad_id][1]
-    tle = _fetch_tle(norad_id)
+        cached = _tle_cache[norad_id][1]
+        return cached or bundled
+
+    tle = _fetch_tle(norad_id) or bundled
     _tle_cache[norad_id] = (now, tle)
     return tle
 
@@ -90,6 +143,7 @@ def get_satellites() -> list[dict[str, Any]]:
             entry["status"] = "simulated"
             results.append(entry)
             continue
+
         tle = get_tle(sat["norad_id"])
         if tle:
             entry["tle_available"] = True

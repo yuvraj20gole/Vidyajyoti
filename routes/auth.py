@@ -24,7 +24,10 @@ def is_vit_email(email: str) -> bool:
 
 @login_manager.user_loader
 def load_user(user_id: str):
-    return db.session.get(User, int(user_id))
+    try:
+        return db.session.get(User, int(user_id))
+    except (TypeError, ValueError):
+        return None
 
 
 @auth_bp.before_app_request

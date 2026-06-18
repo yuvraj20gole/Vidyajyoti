@@ -4,8 +4,6 @@ import math
 import os
 from datetime import timedelta, timezone
 
-from skyfield.api import EarthSatellite, Loader, wgs84
-
 from services.tle import SATELLITE_CATALOG, get_tle
 
 GS_LAT = float(os.environ.get("GS_LAT", "19.08"))
@@ -19,12 +17,28 @@ DOWN = "\u2193"
 
 _ts = None
 _ground = None
+_skyfield_import_error: str | None = None
+
+
+def _import_skyfield():
+    global _skyfield_import_error
+    try:
+        from skyfield.api import EarthSatellite, Loader, wgs84
+
+        return EarthSatellite, Loader, wgs84
+    except Exception as exc:
+        _skyfield_import_error = str(exc)
+        return None
 
 
 def _skyfield_ready():
     global _ts, _ground
     if _ts is not None and _ground is not None:
         return True
+    skyfield = _import_skyfield()
+    if not skyfield:
+        return False
+    EarthSatellite, Loader, wgs84 = skyfield
     try:
         base = os.environ.get("SKYFIELD_DATA", "")
         if not base:
@@ -38,6 +52,16 @@ def _skyfield_ready():
         return True
     except Exception:
         return False
+
+
+def _safe_float(value) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if math.isnan(number) or math.isinf(number):
+        return None
+    return number
 
 
 def _maidenhead(lat: float, lon: float) -> str:
@@ -67,7 +91,7 @@ def _orbit_period_minutes(line2: str) -> int:
         return 0
 
 
-def _find_next_pass(satellite: EarthSatellite, hours: int = 48):
+def _find_next_pass(satellite, hours: int = 48):
     if not _skyfield_ready():
         return None
     t0 = _ts.now()
@@ -80,10 +104,14 @@ def _find_next_pass(satellite: EarthSatellite, hours: int = 48):
             difference = satellite - _ground
             topocentric = difference.at(ti)
             alt, az, _ = topocentric.altaz()
+            az_deg = _safe_float(az.degrees)
+            el_deg = _safe_float(alt.degrees)
+            if az_deg is None or el_deg is None:
+                continue
             return {
                 "time": ti.utc_datetime().replace(tzinfo=timezone.utc),
-                "az": float(az.degrees),
-                "el": float(alt.degrees),
+                "az": az_deg,
+                "el": el_deg,
                 "rising": True,
             }
     return None
@@ -110,24 +138,40 @@ def _empty_row(sat: dict, **overrides) -> dict:
     return row
 
 
+def _fallback_passes(unavailable_label: str = "Pass calc unavailable") -> list[dict]:
+    rows = []
+    for sat in SATELLITE_CATALOG:
+        if sat["is_simulated"]:
+            rows.append(_empty_row(
+                sat,
+                dir="SIM",
+                next_pass="Simulated",
+                alt_km=412,
+                doppler="Simulated",
+                orbit_min=92,
+                status="simulated",
+            ))
+        else:
+            tle = get_tle(sat["norad_id"])
+            orbit_min = _orbit_period_minutes(tle["line2"]) if tle else NA
+            rows.append(_empty_row(
+                sat,
+                next_pass=unavailable_label,
+                orbit_min=orbit_min or NA,
+                status="error",
+            ))
+    return rows
+
+
 def get_passes() -> list[dict]:
     if not _skyfield_ready():
-        rows = []
-        for sat in SATELLITE_CATALOG:
-            if sat["is_simulated"]:
-                rows.append(_empty_row(
-                    sat,
-                    dir="SIM",
-                    next_pass="Simulated",
-                    alt_km=412,
-                    doppler="Simulated",
-                    orbit_min=92,
-                    status="simulated",
-                ))
-            else:
-                rows.append(_empty_row(sat, next_pass="Pass calc unavailable", status="error"))
-        return rows
+        return _fallback_passes()
 
+    skyfield = _import_skyfield()
+    if not skyfield:
+        return _fallback_passes()
+
+    EarthSatellite, _, _ = skyfield
     rows = []
     for sat in SATELLITE_CATALOG:
         if sat["is_simulated"]:
@@ -157,9 +201,18 @@ def get_passes() -> list[dict]:
             subpoint = satellite.at(now).subpoint()
             pass_info = _find_next_pass(satellite)
             orbit_min = _orbit_period_minutes(tle["line2"])
-            lat = float(subpoint.latitude.degrees)
-            lon = float(subpoint.longitude.degrees)
-            alt_km = int(round(float(subpoint.elevation.km)))
+            lat = _safe_float(subpoint.latitude.degrees)
+            lon = _safe_float(subpoint.longitude.degrees)
+            alt_km = _safe_float(subpoint.elevation.km)
+            az_now_deg = _safe_float(az_now.degrees)
+            el_now_deg = _safe_float(alt_now.degrees)
+
+            if lat is None or lon is None or alt_km is None:
+                rows.append(_empty_row(sat, next_pass="Orbit error", status="error"))
+                continue
+
+            alt_km_int = int(round(alt_km))
+            footprint = _maidenhead(lat, lon)
 
             if pass_info:
                 rows.append(_empty_row(
@@ -169,26 +222,28 @@ def get_passes() -> list[dict]:
                     dir=UP if pass_info["rising"] else DOWN,
                     next_pass=pass_info["time"].strftime("%H:%M:%S"),
                     next_pass_iso=pass_info["time"].isoformat(),
-                    footprint=_maidenhead(lat, lon),
-                    alt_km=alt_km,
-                    doppler=_estimate_doppler(alt_km, pass_info["el"], pass_info["rising"]),
+                    footprint=footprint,
+                    alt_km=alt_km_int,
+                    doppler=_estimate_doppler(alt_km_int, pass_info["el"], pass_info["rising"]),
                     orbit_min=orbit_min,
                     status="active",
-                    current_az=float(az_now.degrees),
-                    current_el=float(alt_now.degrees),
+                    current_az=pass_info["az"],
+                    current_el=pass_info["el"],
                 ))
             else:
+                az_label = f"{az_now_deg:.1f}{DEG}" if az_now_deg is not None else NA
+                el_label = f"{el_now_deg:.1f}{DEG}" if el_now_deg is not None else NA
                 rows.append(_empty_row(
                     sat,
-                    az=f"{float(az_now.degrees):.1f}{DEG}",
-                    el=f"{float(alt_now.degrees):.1f}{DEG}",
+                    az=az_label,
+                    el=el_label,
                     next_pass="No pass in 48h",
-                    footprint=_maidenhead(lat, lon),
-                    alt_km=alt_km,
+                    footprint=footprint,
+                    alt_km=alt_km_int,
                     orbit_min=orbit_min,
                     status="active",
-                    current_az=float(az_now.degrees),
-                    current_el=float(alt_now.degrees),
+                    current_az=az_now_deg,
+                    current_el=el_now_deg,
                 ))
         except Exception:
             rows.append(_empty_row(sat, next_pass="Orbit error", status="error"))
