@@ -38,10 +38,12 @@ var SAT_META = {
   'HO-68': { code: 'XW-1 \u00b7 LEO \u00b7 CelesTrak', label: 'HO-68<br>XW-1', purpose: 'Amateur radio \u00b7 Hope Oscar' }
 };
 
-var DARK_TILES = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-var LIGHT_TILES = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-var OSM_TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-var TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>';
+/* English-label basemaps (Esri Canvas). Carto/OSM default tiles show local scripts (e.g. 中国) and odd transliterations. */
+var DARK_TILE_BASE = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+var DARK_TILE_LABELS = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
+var LIGHT_TILE_BASE = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+var LIGHT_TILE_LABELS = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
+var MAP_TILE_ATTR = 'Tiles &copy; Esri &mdash; Esri, Garmin, GEBCO, NOAA, USGS';
 var mapTileLayers = { world: null, india: null };
 var GLOBE_IMG_DARK = 'https://unpkg.com/three-globe/example/img/earth-night.jpg';
 var GLOBE_IMG_LIGHT = 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
@@ -50,8 +52,46 @@ function isLightMapTheme() {
   return document.documentElement.getAttribute('data-theme') === 'light';
 }
 
-function primaryTileUrl() {
-  return isLightMapTheme() ? LIGHT_TILES : DARK_TILES;
+function mapTileOptions() {
+  return {
+    attribution: MAP_TILE_ATTR,
+    maxZoom: 16,
+    minZoom: 2,
+    keepBuffer: 2,
+    updateWhenIdle: true,
+    updateWhenZooming: false,
+    fadeAnimation: false,
+    zoomAnimation: false
+  };
+}
+
+function createEnglishMapLayers() {
+  var opts = mapTileOptions();
+  if (isLightMapTheme()) {
+    return [
+      L.tileLayer(LIGHT_TILE_BASE, opts),
+      L.tileLayer(LIGHT_TILE_LABELS, opts)
+    ];
+  }
+  return [
+    L.tileLayer(DARK_TILE_BASE, opts),
+    L.tileLayer(DARK_TILE_LABELS, opts)
+  ];
+}
+
+function removeStoredTileLayers(map, key) {
+  var stored = mapTileLayers[key];
+  if (!map || !stored) return;
+  (Array.isArray(stored) ? stored : [stored]).forEach(function (layer) {
+    if (map.hasLayer(layer)) map.removeLayer(layer);
+  });
+}
+
+function addReliableTiles(map, storeKey) {
+  var layers = createEnglishMapLayers();
+  layers.forEach(function (layer) { layer.addTo(map); });
+  if (storeKey) mapTileLayers[storeKey] = layers;
+  return layers;
 }
 
 function vjAccentColor() {
@@ -135,41 +175,15 @@ function scheduleMapResize() {
   });
 }
 
-function addReliableTiles(map, storeKey) {
-  var primary = L.tileLayer(primaryTileUrl(), {
-    attribution: TILE_ATTR,
-    subdomains: 'abcd',
-    maxZoom: 8,
-    minZoom: 2,
-    keepBuffer: 2,
-    updateWhenIdle: true,
-    updateWhenZooming: false,
-    fadeAnimation: false,
-    zoomAnimation: false
-  });
-  primary.addTo(map);
-  if (storeKey) mapTileLayers[storeKey] = primary;
-  return primary;
-}
-
 window.refreshMapTheme = function () {
-  var url = primaryTileUrl();
   [['world', worldLeaflet], ['india', indiaLeaflet]].forEach(function (pair) {
     var key = pair[0];
     var map = pair[1];
-    var old = mapTileLayers[key];
-    if (!map || !old) return;
-    map.removeLayer(old);
-    var layer = L.tileLayer(url, {
-      attribution: TILE_ATTR,
-      subdomains: 'abcd',
-      maxZoom: 8,
-      keepBuffer: 2,
-      updateWhenIdle: true,
-      fadeAnimation: false
-    });
-    layer.addTo(map);
-    mapTileLayers[key] = layer;
+    if (!map || !mapTileLayers[key]) return;
+    removeStoredTileLayers(map, key);
+    var layers = createEnglishMapLayers();
+    layers.forEach(function (layer) { layer.addTo(map); });
+    mapTileLayers[key] = layers;
   });
   if (globeInstance && globeReady) {
     globeInstance
