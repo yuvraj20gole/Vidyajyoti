@@ -38,12 +38,12 @@ var SAT_META = {
   'HO-68': { code: 'XW-1 \u00b7 LEO \u00b7 CelesTrak', label: 'HO-68<br>XW-1', purpose: 'Amateur radio \u00b7 Hope Oscar' }
 };
 
-/* English-label basemaps (Esri Canvas). Carto/OSM default tiles show local scripts (e.g. 中国) and odd transliterations. */
-var DARK_TILE_BASE = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-var DARK_TILE_LABELS = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
-var LIGHT_TILE_BASE = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-var LIGHT_TILE_LABELS = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
-var MAP_TILE_ATTR = 'Tiles &copy; Esri &mdash; Esri, Garmin, GEBCO, NOAA, USGS';
+/* Dark Carto base (no local-language labels) + Esri English reference labels on top. */
+var CARTO_DARK_BASE = 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png';
+var CARTO_LIGHT_BASE = 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
+var EN_LABELS_DARK = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
+var EN_LABELS_LIGHT = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
+var MAP_TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a> &copy; Esri';
 var mapTileLayers = { world: null, india: null };
 var GLOBE_IMG_DARK = 'https://unpkg.com/three-globe/example/img/earth-night.jpg';
 var GLOBE_IMG_LIGHT = 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
@@ -52,9 +52,22 @@ function isLightMapTheme() {
   return document.documentElement.getAttribute('data-theme') === 'light';
 }
 
-function mapTileOptions() {
+function cartoBaseOptions() {
   return {
     attribution: MAP_TILE_ATTR,
+    subdomains: 'abcd',
+    maxZoom: 19,
+    minZoom: 2,
+    keepBuffer: 2,
+    updateWhenIdle: true,
+    updateWhenZooming: false,
+    fadeAnimation: false,
+    zoomAnimation: false
+  };
+}
+
+function englishLabelOptions() {
+  return {
     maxZoom: 16,
     minZoom: 2,
     keepBuffer: 2,
@@ -66,16 +79,15 @@ function mapTileOptions() {
 }
 
 function createEnglishMapLayers() {
-  var opts = mapTileOptions();
   if (isLightMapTheme()) {
     return [
-      L.tileLayer(LIGHT_TILE_BASE, opts),
-      L.tileLayer(LIGHT_TILE_LABELS, opts)
+      L.tileLayer(CARTO_LIGHT_BASE, cartoBaseOptions()),
+      L.tileLayer(EN_LABELS_LIGHT, englishLabelOptions())
     ];
   }
   return [
-    L.tileLayer(DARK_TILE_BASE, opts),
-    L.tileLayer(DARK_TILE_LABELS, opts)
+    L.tileLayer(CARTO_DARK_BASE, cartoBaseOptions()),
+    L.tileLayer(EN_LABELS_DARK, englishLabelOptions())
   ];
 }
 
