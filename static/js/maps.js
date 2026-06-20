@@ -210,6 +210,14 @@ function satDopplerLabel(sat) {
   return row && row.doppler ? row.doppler : '\u2014';
 }
 
+function groundTrackLabel(lat, lon) {
+  if (lon < 72) return 'Arabian Sea';
+  if (lon < 80) return 'Western India';
+  if (lon < 88) return 'Central India';
+  if (lat < 15) return 'Indian Ocean';
+  return 'Bay of Bengal';
+}
+
 function updateMttOverlay() {
   var sat = findSat(selectedSatName);
   if (!sat) return;
@@ -230,8 +238,12 @@ function updateMttOverlay() {
   s('sb-lon', Math.abs(pos.lon).toFixed(2) + deg + (pos.lon >= 0 ? 'E' : 'W'));
   s('sb-alt', pos.alt_km.toFixed(1) + ' km');
   s('sb-vel', (pos.velocity || 0).toFixed(3) + ' km/s');
+  if (sat.is_simulated || sat.name === 'VIDYAJYOTI') {
+    s('sb-gt', groundTrackLabel(pos.lat, pos.lon));
+  }
   var simBadge = el('vjSimBadge');
   if (simBadge) simBadge.hidden = !(sat.is_simulated || sat.name === 'VIDYAJYOTI');
+  if (typeof window.updatePassCountdown === 'function') window.updatePassCountdown();
   if (typeof window.setPolarTarget === 'function') {
     window.setPolarTarget(angles.az, angles.el);
   }
@@ -439,11 +451,12 @@ function resizeGlobe() {
 }
 
 function initGlobe() {
-  if (globeReady) return;
+  if (globeReady && globeInstance) return;
   if (typeof Globe === 'undefined') return;
-  globeReady = true;
   var wrap = el('globeWrap');
-  globeInstance = Globe()
+  if (!wrap) return;
+  try {
+    globeInstance = Globe()
     .globeImageUrl(isLightMapTheme() ? GLOBE_IMG_LIGHT : GLOBE_IMG_DARK)
     .backgroundColor('rgba(0,0,0,0)')
     .showAtmosphere(true).atmosphereColor(vjAccentColor()).atmosphereAltitude(0.18)
@@ -470,12 +483,17 @@ function initGlobe() {
       return path && path.name === selectedSatName ? 0.04 : 0.025;
     })
     .pathColor(function (d) { return d.color; })
-    .pathStroke(function (d) { return d.name === selectedSatName ? 0.55 : 0.35; })
-    .pathsTransitionDuration(0)(wrap);
-  globeInstance.controls().autoRotate = true;
-  globeInstance.controls().autoRotateSpeed = 0.35;
-  resizeGlobe();
-  updateGlobeData(true);
+    .pathStroke(function (d) { return d.name === selectedSatName ? 0.55 : 0.35; })(wrap);
+    globeInstance.controls().autoRotate = true;
+    globeInstance.controls().autoRotateSpeed = 0.35;
+    globeReady = true;
+    resizeGlobe();
+    updateGlobeData(true);
+  } catch (err) {
+    console.error('Globe init failed:', err);
+    globeReady = false;
+    globeInstance = null;
+  }
 }
 
 function splitPathAtDateline(coords) {

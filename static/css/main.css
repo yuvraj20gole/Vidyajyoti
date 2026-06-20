@@ -258,8 +258,8 @@ html[data-theme="light"] .settings-success{background:rgba(5,150,105,.1);border-
 .leaflet-popup-tip{background:var(--leaflet-popup)!important;}
 .leaflet-popup-content{font-family:var(--fm);font-size:11px;margin:8px 10px;line-height:1.45;}
 .leaflet-bar{border:none!important;box-shadow:var(--shadow-md)!important;}
-#signalBar{flex-shrink:0;background:var(--surface-elevated);border-top:1px solid var(--b1);height:36px;display:flex;align-items:center;padding:0 14px;gap:16px;box-shadow:var(--shadow-sm);}
-.sb-item{display:flex;align-items:center;gap:6px;font-family:var(--fm);font-size:.6rem;color:var(--dim);}
+#signalBar{flex-shrink:0;background:var(--surface-elevated);border-top:1px solid var(--b1);min-height:36px;display:flex;align-items:center;flex-wrap:wrap;padding:6px 14px;gap:8px 16px;box-shadow:var(--shadow-sm);overflow-x:auto;}
+.sb-item{display:flex;align-items:center;gap:6px;font-family:var(--fm);font-size:.6rem;color:var(--dim);flex-shrink:0;white-space:nowrap;}
 .sb-val{color:var(--acc2);font-weight:500;}
 
 /* Pass table */
