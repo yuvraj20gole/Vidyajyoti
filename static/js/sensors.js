@@ -19,9 +19,6 @@ function apiFetch(url) {
 
 var D = { temp: 31.4, hum: 78, pres: 1008, wind: 18, uv: 7.2, aqi: 142, dew: 24.1, vis: 6.2, cloud: 68, rain: 2, age: 0 };
 var wxConds = ['Partly Cloudy', 'Mostly Sunny', 'Overcast', 'Hazy', 'Humid'];
-var tempHistory = [];
-for (var ii = 0; ii < 24; ii++) tempHistory.push(28);
-
 var OR = { lat: 20, lon: 78, alt: 412.6, vel: 7.662, dop: 3.12 };
 var GTS = ['Bay of Bengal', 'Tamil Nadu Coast', 'Indian Ocean', 'Arabian Sea', 'Bay of Bengal'];
 var gti = 0;
@@ -37,8 +34,7 @@ function applyTelemetry(data) {
   D.vis = data.vis;
   D.cloud = data.cloud;
   D.rain = data.rain;
-  tempHistory.push(D.temp);
-  if (tempHistory.length > 48) tempHistory.shift();
+  if (typeof syncSparklineLiveTemp === 'function') syncSparklineLiveTemp(D.temp);
 
   function s(id, v) { var e = el(id); if (e) e.textContent = v; }
   function sw(id, pct) { var e = el(id); if (e) e.style.width = Math.max(2, Math.min(100, pct)) + '%'; }
@@ -65,7 +61,8 @@ function applyTelemetry(data) {
   s('rainVal', Math.round(D.rain));
   D.age = 0;
   if (typeof setGaugeTarget === 'function') setGaugeTarget(D.hum);
-  if (typeof drawTempSparkline === 'function') drawTempSparkline();
+  if (typeof updateDashStatCards === 'function') updateDashStatCards(window._telemetryHistory, D);
+  if (typeof drawTempSparkline === 'function' && window._sparklineData) drawTempSparkline();
 }
 
 function formatDoppler(dop) {

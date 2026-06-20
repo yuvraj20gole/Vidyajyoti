@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vidyajyoti Tracker</title>
+<script>
+(function () {
+  var theme = localStorage.getItem('vj-theme');
+  if (theme === 'light' || theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+})();
+window.VJ_SAT_ICON = "images/satellite.svg";
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
@@ -17,9 +26,9 @@
 <!-- Cosmic bg -->
 <div id="cosmos">
   <canvas id="bgCvs"></canvas>
-  <div class="neb" style="width:600px;height:600px;top:-200px;left:-100px;background:radial-gradient(circle,rgba(20,40,120,.4),transparent 70%);"></div>
-  <div class="neb" style="width:400px;height:400px;top:30%;right:-80px;background:radial-gradient(circle,rgba(80,30,120,.3),transparent 70%);"></div>
-  <div class="neb" style="width:500px;height:500px;bottom:-150px;left:32%;background:radial-gradient(circle,rgba(0,60,120,.35),transparent 70%);"></div>
+  <div class="neb neb-a"></div>
+  <div class="neb neb-b"></div>
+  <div class="neb neb-c"></div>
 </div>
 
 <!-- TOP BAR -->
@@ -33,9 +42,10 @@
       <button class="tabn active" data-tab="1"><span class="tabn-num">01</span>Telemetry</button>
       <button class="tabn" data-tab="2"><span class="tabn-num">02</span>Orbit Tracker</button>
       <button class="tabn" data-tab="3"><span class="tabn-num">03</span>Dashboard</button>
+      <button class="tabn" data-tab="4"><span class="tabn-num">04</span>Settings</button>
     </nav>
     <div class="tb-meta">
-      <span class="tb-utc" id="utcClock">2024/05/01 09:10:01</span>
+      <span class="tb-utc" id="utcClock">IST --:--:--</span>
       <span class="tb-sep">|</span>
       <span id="nextPassLabel">Next Pass: 03:47</span>
       <span class="tb-sep">|</span>
@@ -45,6 +55,7 @@
   <div class="tb-right">
     <div class="spill"><div class="sdot g"></div>UPLINK OK</div>
     <div class="spill"><div class="sdot w"></div><span id="passCountdown">NEXT 03:47</span></div>
+    <a href="{{ url_for('auth.logout') }}" class="spill logout-link" title="Sign out">LOGOUT</a>
   </div>
 </header>
 
@@ -81,33 +92,33 @@
       <div class="pstitle">Tracked Satellites</div>
     </div>
     <div class="sat-list">
-      <div class="sat-row active au au1">
-        <div class="sat-ico" style="background:rgba(77,159,255,.15);">&#128752;</div>
+      <div class="sat-row active au au1" data-sat="VIDYAJYOTI">
+        <div class="sat-ico">&#128752;</div>
         <div style="flex:1;min-width:0;"><div class="sat-nm">VIDYAJYOTI</div><div class="sat-sub">SAT-01 &middot; 412 km</div></div>
         <div class="sat-badge leo">LEO</div>
       </div>
-      <div class="sat-row au au2">
-        <div class="sat-ico" style="background:rgba(0,229,160,.12);">&#128225;</div>
+      <div class="sat-row au au2" data-sat="HO-68">
+        <div class="sat-ico grn">&#128225;</div>
         <div style="flex:1;min-width:0;"><div class="sat-nm">HO-68</div><div class="sat-sub">HAMSAT &middot; 7,308 km</div></div>
         <div class="sat-badge meo">MEO</div>
       </div>
-      <div class="sat-row au au3">
-        <div class="sat-ico" style="background:rgba(157,111,255,.12);">&#128301;</div>
+      <div class="sat-row au au3" data-sat="VO-52">
+        <div class="sat-ico pur">&#128301;</div>
         <div style="flex:1;min-width:0;"><div class="sat-nm">VO-52</div><div class="sat-sub">HAMSAT &middot; 627 km</div></div>
         <div class="sat-badge leo">LEO</div>
       </div>
-      <div class="sat-row au au4">
-        <div class="sat-ico" style="background:rgba(255,124,58,.12);">&#127758;</div>
+      <div class="sat-row au au4" data-sat="SO-50">
+        <div class="sat-ico org">&#127758;</div>
         <div style="flex:1;min-width:0;"><div class="sat-nm">SO-50</div><div class="sat-sub">SaudiSat &middot; 703 km</div></div>
         <div class="sat-badge leo">LEO</div>
       </div>
-      <div class="sat-row au au5">
-        <div class="sat-ico" style="background:rgba(255,196,68,.12);">&#128246;</div>
+      <div class="sat-row au au5" data-sat="AO-27">
+        <div class="sat-ico wrn">&#128246;</div>
         <div style="flex:1;min-width:0;"><div class="sat-nm">AO-27</div><div class="sat-sub">AMRAD &middot; 779 km</div></div>
         <div class="sat-badge leo">LEO</div>
       </div>
-      <div class="sat-row au au6">
-        <div class="sat-ico" style="background:rgba(100,160,255,.1);">&#128760;</div>
+      <div class="sat-row au au6" data-sat="FO-29">
+        <div class="sat-ico muted">&#128760;</div>
         <div style="flex:1;min-width:0;"><div class="sat-nm">FO-29</div><div class="sat-sub">FujiSat &middot; 887 km</div></div>
         <div class="sat-badge leo">LEO</div>
       </div>
@@ -127,17 +138,15 @@
           <div class="t1-big-sub">Feels like <span id="feelsLike">34.2</span>&deg;C &nbsp;&middot;&nbsp; <span id="wxCond">Partly Cloudy</span></div>
           <canvas id="tempSparkline" height="48" style="width:100%;display:block;margin-top:10px;opacity:.85;"></canvas>
           <div class="chart-legend">
-            <div class="chart-legend-item"><span class="chart-swatch" style="background:#ff7c3a;"></span>Temp (°C)</div>
+            <div class="chart-legend-item"><span class="chart-swatch sw-org"></span>Temp (°C)</div>
           </div>
         </div>
-        <div class="t1-big" style="flex:.7;background:rgba(0,229,160,.06);border-color:rgba(0,229,160,.2);">
+        <div class="t1-big hum-card" style="flex:.7;">
           <div class="t1-big-lbl">Humidity</div>
           <div><span class="t1-big-val" id="humHero" style="color:var(--grn);">78</span><span class="t1-big-unit" style="color:var(--grn);">%</span></div>
           <div class="t1-big-sub">HIGH MOISTURE</div>
-          <div style="margin-top:14px;">
-            <div style="height:6px;background:rgba(0,229,160,.1);border-radius:3px;border:1px solid rgba(0,229,160,.2);">
-              <div id="humBarHero" style="height:100%;border-radius:3px;background:linear-gradient(90deg,#00e5a0,#00c88a);width:78%;transition:width .9s ease;"></div>
-            </div>
+          <div class="hum-bar-track">
+            <div id="humBarHero" class="hum-bar-fill" style="width:78%;"></div>
           </div>
         </div>
       </div>
@@ -165,7 +174,7 @@
         <div class="t1-metric">
           <div class="card-shine"></div>
           <div class="tm-lbl">Air Quality (AQI)</div>
-          <div><span class="tm-val" id="aqiVal">142</span><span class="tm-unit" style="color:var(--wrn);">Mod</span></div>
+          <div><span class="tm-val" id="aqiVal">142</span><span class="tm-unit" id="aqiUnit" style="color:var(--wrn);">Mod</span></div>
           <div class="tm-bar-wrap"><div class="tm-bar" id="aqiBar" style="width:47%;background:linear-gradient(90deg,var(--grn),var(--wrn));"></div></div>
         </div>
       </div>
@@ -200,14 +209,14 @@
 
       <!-- 24h chart -->
       <div class="t1-chart-wrap">
-        <div class="t1-chart-title">24h Climate History &mdash; Mumbai (Dummy Data)</div>
+        <div class="t1-chart-title">24h Climate History &mdash; Mumbai <span class="data-source">Live &middot; Open-Meteo</span></div>
         <div class="chart-canvas-wrap">
           <canvas id="climChart"></canvas>
         </div>
         <div class="chart-legend">
-          <div class="chart-legend-item"><span class="chart-swatch" style="background:#ff7c3a;"></span>Temp (°C)</div>
-          <div class="chart-legend-item"><span class="chart-swatch" style="background:#00e5a0;"></span>Humidity (%)</div>
-          <div class="chart-legend-item"><span class="chart-swatch chart-swatch-dash" style="border-color:#9d6fff;"></span>Pressure (hPa, own scale)</div>
+          <div class="chart-legend-item"><span class="chart-swatch sw-org"></span>Temp (°C)</div>
+          <div class="chart-legend-item"><span class="chart-swatch sw-grn"></span>Humidity (%)</div>
+          <div class="chart-legend-item"><span class="chart-swatch chart-swatch-dash sw-pur"></span>Pressure (hPa, own scale)</div>
         </div>
       </div>
 
@@ -230,23 +239,28 @@
         <button class="vtbtn" onclick="setMapMode('globe',this)">3D Globe</button>
       </div>
       <div id="mapStage">
+      <div id="orbitDataBanner" class="orbit-data-banner" hidden></div>
       <div id="mapLoadHint" class="map-fallback-msg">Loading map…</div>
       <div id="worldMapLeaflet"></div>
       <div id="globeWrap"></div>
       <!-- Polar plot overlay -->
-      <div id="polarOverlay" class="map-overlay">
-        <canvas id="polarCanvas" width="130" height="130"></canvas>
+      <div id="polarOverlay" class="map-overlay map-overlay-panel">
+        <div class="map-overlay-title">Sky Plot &mdash; Azimuth &amp; Elevation</div>
+        <div class="map-overlay-sub">Selected satellite position from Mumbai ground station</div>
+        <canvas id="polarCanvas" width="200" height="200"></canvas>
         <div class="chart-legend">
-          <div class="chart-legend-item"><span class="chart-swatch" style="background:#4d9fff;"></span>Satellite track</div>
-          <div class="chart-legend-item"><span class="chart-swatch" style="background:rgba(100,160,255,.4);"></span>Elevation rings</div>
+          <div class="chart-legend-item"><span class="chart-swatch sw-acc"></span>Satellite direction</div>
+          <div class="chart-legend-item"><span class="chart-swatch sw-muted"></span>Elevation rings (10&deg; steps)</div>
         </div>
       </div>
       <!-- Signal strength overlay -->
-      <div id="sigOverlay" class="map-overlay">
-        <canvas id="sigCanvas" width="200" height="72"></canvas>
+      <div id="sigOverlay" class="map-overlay map-overlay-panel">
+        <div class="map-overlay-title">Downlink Signal Strength</div>
+        <div class="map-overlay-sub">Estimated from satellite elevation angle</div>
+        <canvas id="sigCanvas" width="300" height="120"></canvas>
         <div class="chart-legend">
-          <div class="chart-legend-item"><span class="chart-swatch" style="background:#4d9fff;"></span>VHF</div>
-          <div class="chart-legend-item"><span class="chart-swatch" style="background:#9d6fff;"></span>UHF</div>
+          <div class="chart-legend-item"><span class="chart-swatch sw-acc"></span>Signal quality (%)</div>
+          <div class="chart-legend-item"><span class="chart-swatch sw-muted"></span>0 &ndash; 100 scale</div>
         </div>
       </div>
       <!-- Map tooltip -->
@@ -260,39 +274,24 @@
       </div>
       <!-- Status bar -->
       <div id="signalBar">
-        <div class="sb-item">Lat <span class="sb-val" id="sb-lat">22.14&deg;N</span></div>
-        <div class="sb-item">Lon <span class="sb-val" id="sb-lon">88.36&deg;E</span></div>
+        <div class="sb-item sb-selected-label">Selected: <span class="sb-val" id="sb-selected">VIDYAJYOTI</span></div>
+        <div class="sb-item" id="vjSimBadge">Simulated telemetry</div>
+        <div class="sb-item">Lat <span class="sb-val" id="sb-lat">20.00&deg;N</span></div>
+        <div class="sb-item">Lon <span class="sb-val" id="sb-lon">78.00&deg;E</span></div>
         <div class="sb-item">Alt <span class="sb-val" id="sb-alt">412 km</span></div>
         <div class="sb-item">Vel <span class="sb-val" id="sb-vel">7.662 km/s</span></div>
         <div class="sb-item">Ground Track <span class="sb-val" id="sb-gt">Bay of Bengal</span></div>
-        <div class="sb-item">Next Pass <span class="sb-val" id="sb-np">03:47:00</span></div>
+        <div class="sb-item">Next Pass (UTC) <span class="sb-val" id="sb-np">--:--:--</span></div>
       </div>
       <!-- Pass table -->
       <div id="passTable">
+        <div class="pt-section-title">Upcoming Passes &mdash; Ground Station Mumbai</div>
+        <div class="pt-help">Click a row to select a satellite. AZ = compass bearing, EL = elevation above horizon, NEXT PASS = UTC peak time.</div>
         <div class="pt-header">
           <div>SATELLITE</div><div>AZ</div><div>EL</div><div>DIR</div>
-          <div>NEXT PASS</div><div>FOOTPRINT</div><div>ALT km</div><div>DOPPLER</div><div>ORBIT</div>
+          <div>NEXT PASS</div><div>GRID</div><div>ALT km</div><div>DOPPLER</div><div>PERIOD</div>
         </div>
-        <div class="pt-row sel">
-          <div class="col-sat">VIDYAJYOTI</div><div>215.5&deg;</div><div>-38.4&deg;</div>
-          <div class="col-g">&#8593;</div><div>21:42:15</div><div>HG65MA</div><div>412</div>
-          <div class="col-g">-1.2kHz</div><div>6607</div>
-        </div>
-        <div class="pt-row">
-          <div class="col-sat">VO-52</div><div>305.8&deg;</div><div>24.4&deg;</div>
-          <div class="col-g">&#8593;</div><div>22:13:10</div><div>IP80FD</div><div>627</div>
-          <div class="col-g">+205Hz</div><div>28056</div>
-        </div>
-        <div class="pt-row">
-          <div class="col-sat">SO-50</div><div>150.3&deg;</div><div>-60.1&deg;</div>
-          <div class="col-o">&#8595;</div><div>23:21:20</div><div>MD3OOF</div><div>703</div>
-          <div class="col-o">-533Hz</div><div>51597</div>
-        </div>
-        <div class="pt-row">
-          <div class="col-sat">AO-27</div><div>141.4&deg;</div><div>-17.7&deg;</div>
-          <div class="col-o">&#8595;</div><div>00:14:55</div><div>LK00CS</div><div>779</div>
-          <div class="col-o">-2.1kHz</div><div>9175</div>
-        </div>
+        <div id="passTableBody"></div>
       </div>
     </div>
 
@@ -306,14 +305,14 @@
       <!-- India map + climate chart side by side -->
       <div class="t3-main">
         <div class="t3-half">
-          <div class="t3-sec-title">Climate History 24h &mdash; Mumbai</div>
+          <div class="t3-sec-title">Climate History 24h &mdash; Mumbai <span class="data-source">Open-Meteo</span></div>
           <div class="chart-canvas-wrap">
             <canvas id="dashChart"></canvas>
           </div>
           <div class="chart-legend">
-            <div class="chart-legend-item"><span class="chart-swatch" style="background:#ff7c3a;"></span>Temp (°C)</div>
-            <div class="chart-legend-item"><span class="chart-swatch" style="background:#00e5a0;"></span>Humidity (%)</div>
-            <div class="chart-legend-item"><span class="chart-swatch chart-swatch-dash" style="border-color:#9d6fff;"></span>Pressure (hPa, own scale)</div>
+            <div class="chart-legend-item"><span class="chart-swatch sw-org"></span>Temp (°C)</div>
+            <div class="chart-legend-item"><span class="chart-swatch sw-grn"></span>Humidity (%)</div>
+            <div class="chart-legend-item"><span class="chart-swatch chart-swatch-dash sw-pur"></span>Pressure (hPa, own scale)</div>
           </div>
         </div>
         <div class="t3-map-panel" style="margin-bottom:0;">
@@ -324,10 +323,10 @@
 
       <!-- 4 stat boxes -->
       <div class="t3-stat4">
-        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--org);">31.4&deg;</div><div class="t3-s4-lbl">Avg Temp</div></div>
-        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--grn);">78%</div><div class="t3-s4-lbl">Humidity</div></div>
-        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--pur);">1008</div><div class="t3-s4-lbl">Pressure hPa</div></div>
-        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--wrn);">7.2</div><div class="t3-s4-lbl">UV Index</div></div>
+        <div class="t3-s4"><div class="t3-s4-val" id="dashTempVal" style="color:var(--org);">--</div><div class="t3-s4-lbl">Avg Temp</div></div>
+        <div class="t3-s4"><div class="t3-s4-val" id="dashHumVal" style="color:var(--grn);">--</div><div class="t3-s4-lbl">Humidity</div></div>
+        <div class="t3-s4"><div class="t3-s4-val" id="dashPresVal" style="color:var(--pur);">--</div><div class="t3-s4-lbl">Pressure hPa</div></div>
+        <div class="t3-s4"><div class="t3-s4-val" id="dashUvVal" style="color:var(--wrn);">--</div><div class="t3-s4-lbl">UV Index</div></div>
       </div>
 
       <!-- Launches -->
@@ -355,6 +354,63 @@
       </div>
     </div>
 
+    <!-- TAB 4: SETTINGS -->
+    <div class="tab-panel" id="tab4">
+      <div class="settings-wrap">
+        <div class="settings-header">
+          <div class="settings-title">Settings</div>
+          <div class="settings-sub">Manage appearance and account security</div>
+        </div>
+
+        <section class="settings-card">
+          <div class="settings-card-title">Account</div>
+          <div class="settings-row">
+            <span class="settings-label">Signed in as</span>
+            <span class="settings-value" id="settings-email">—</span>
+          </div>
+        </section>
+
+        <section class="settings-card">
+          <div class="settings-card-title">Appearance</div>
+          <div class="settings-row settings-row-toggle">
+            <div>
+              <div class="settings-label">Theme</div>
+              <div class="settings-hint" id="theme-hint">Dark mode enabled</div>
+            </div>
+            <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle light and dark mode">
+              <span class="theme-toggle-track">
+                <span class="theme-toggle-thumb" id="theme-thumb"></span>
+              </span>
+              <span class="theme-toggle-text" id="theme-label">Dark</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="settings-card">
+          <div class="settings-card-title">Change password</div>
+          <form id="changePasswordForm" class="settings-form" novalidate>
+            <div class="settings-field">
+              <label class="settings-label" for="cp-current">Current password</label>
+              <input type="password" id="cp-current" class="settings-input" autocomplete="current-password" placeholder="Enter current password">
+              <div class="settings-error" id="cp-current-err"></div>
+            </div>
+            <div class="settings-field">
+              <label class="settings-label" for="cp-new">New password</label>
+              <input type="password" id="cp-new" class="settings-input" autocomplete="new-password" placeholder="Min 8 characters">
+              <div class="settings-error" id="cp-new-err"></div>
+            </div>
+            <div class="settings-field">
+              <label class="settings-label" for="cp-confirm">Confirm new password</label>
+              <input type="password" id="cp-confirm" class="settings-input" autocomplete="new-password" placeholder="Repeat new password">
+              <div class="settings-error" id="cp-confirm-err"></div>
+            </div>
+            <div class="settings-success" id="cp-success" hidden></div>
+            <button type="submit" class="settings-btn" id="cp-btn">Update password</button>
+          </form>
+        </section>
+      </div>
+    </div>
+
   </div><!-- /center -->
 
   <!-- RIGHT PANEL -->
@@ -362,8 +418,8 @@
     <!-- Sat info -->
     <div class="sic">
       <div class="sic-glow"></div>
-      <div class="sic-code">SAT-01 &middot; LEO &middot; ISRO STUDENT PROGRAM</div>
-      <div class="sic-name">VIDYAJYOTI<br>SAT-01</div>
+      <div class="sic-code" id="sic-code">SAT-01 &middot; LEO &middot; ISRO STUDENT PROGRAM</div>
+      <div class="sic-name" id="sic-name">VIDYAJYOTI<br>SAT-01</div>
       <div class="sic-grid">
         <div class="sic-m"><div><span class="sic-mv" id="rm-alt">412</span><span class="sic-mu">KM</span></div><div class="sic-ml">Altitude</div></div>
         <div class="sic-m"><div><span class="sic-mv" id="rm-vel">7.3</span><span class="sic-mu">km/s</span></div><div class="sic-ml">Velocity</div></div>
@@ -372,7 +428,7 @@
       </div>
       <div style="margin-top:8px;padding:8px 10px;background:var(--glass);border:1px solid var(--b1);border-radius:6px;">
         <div style="font-family:var(--fm);font-size:.48rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Purpose</div>
-        <div style="font-family:var(--fb);font-size:.65rem;color:var(--txt);">Earth Observation &middot; Climate Monitoring &middot; Amateur Radio</div>
+        <div style="font-family:var(--fb);font-size:.65rem;color:var(--txt);" id="sic-purpose">Earth Observation &middot; Climate Monitoring &middot; Amateur Radio</div>
       </div>
     </div>
 
@@ -381,20 +437,20 @@
     <div class="gauge-wrap">
       <canvas id="gaugeCanvas" width="180" height="88"></canvas>
       <div class="chart-legend" style="justify-content:center;margin-top:6px;">
-        <div class="chart-legend-item"><span class="chart-swatch" style="background:linear-gradient(90deg,#4d9fff,#00e5a0);"></span>Signal Quality (%)</div>
-        <div class="chart-legend-item"><span class="chart-swatch" style="background:rgba(100,160,255,.2);"></span>0 – 100 scale</div>
+        <div class="chart-legend-item"><span class="chart-swatch sw-acc-grn"></span>Signal Quality (%)</div>
+        <div class="chart-legend-item"><span class="chart-swatch sw-muted"></span>0 – 100 scale</div>
       </div>
     </div>
 
     <!-- Upcoming launches -->
     <div class="sec-hdr">Upcoming Launches <span class="sec-action">All</span></div>
-    <div class="launch-item"><div class="li-date"><div class="li-mon">JUN</div><div class="li-day">28</div></div>
+    <div class="launch-item" data-launch="SpaceX Falcon 9 — 22 Starlink satellites. Launch from Cape Canaveral, Florida. Private commercial mission."><div class="li-date"><div class="li-mon">JUN</div><div class="li-day">28</div></div>
       <div style="flex:1;"><div class="li-mission">SpaceX &mdash; Starlink</div><div class="li-rocket">Falcon 9 &middot; Cape Canaveral</div></div>
       <div class="li-badge li-priv">PRIV</div></div>
-    <div class="launch-item"><div class="li-date"><div class="li-mon">JUL</div><div class="li-day">04</div></div>
+    <div class="launch-item" data-launch="ISRO PSLV-C60 carrying NVS-02 navigation satellite. Launch from Satish Dhawan Space Centre, Sriharikota. Government mission."><div class="li-date"><div class="li-mon">JUL</div><div class="li-day">04</div></div>
       <div style="flex:1;"><div class="li-mission">ISRO PSLV-C60</div><div class="li-rocket">PSLV-XL &middot; Satish Dhawan</div></div>
       <div class="li-badge li-gov">GOVT</div></div>
-    <div class="launch-item"><div class="li-date"><div class="li-mon">AUG</div><div class="li-day">12</div></div>
+    <div class="launch-item" data-launch="ChinaSat 6E communications satellite aboard Long March 3B from Xichang Satellite Launch Center."><div class="li-date"><div class="li-mon">AUG</div><div class="li-day">12</div></div>
       <div style="flex:1;"><div class="li-mission">ChinaSat 6E</div><div class="li-rocket">Long March 3B &middot; Xichang</div></div>
       <div class="li-badge li-mil">MIL</div></div>
 
@@ -409,9 +465,12 @@
   </div>
 
 </div><!-- /app -->
+<script src="vendor/satellite/satellite.min.js"></script>
+<script src="js/orbit-engine.js"></script>
 <script src="js/app.js"></script>
 <script src="js/sensors.js"></script>
-<script src="js/charts.js"></script>
+<script src="js/charts.js?v=20260530"></script>
 <script src="js/maps.js"></script>
+<script src="js/settings.js"></script>
 </body>
 </html>

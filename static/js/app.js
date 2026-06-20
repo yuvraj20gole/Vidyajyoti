@@ -90,6 +90,9 @@ document.querySelectorAll('.tabn').forEach(function (btn) {
     var panel = el('tab' + t);
     if (panel) panel.classList.add('active');
     activeTab = t;
+    if (t === 1 || t === 3) {
+      if (typeof refreshVjClimateCharts === 'function') requestAnimationFrame(refreshVjClimateCharts);
+    }
     if (t === 2 && !worldMapReady) initWorldMap();
     if (t === 3 && !dashChartReady) initDashChart();
     if (t === 2 && worldMapReady) scheduleMapResize();

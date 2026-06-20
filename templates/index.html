@@ -323,10 +323,10 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
 
       <!-- 4 stat boxes -->
       <div class="t3-stat4">
-        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--org);">31.4&deg;</div><div class="t3-s4-lbl">Avg Temp</div></div>
-        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--grn);">78%</div><div class="t3-s4-lbl">Humidity</div></div>
-        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--pur);">1008</div><div class="t3-s4-lbl">Pressure hPa</div></div>
-        <div class="t3-s4"><div class="t3-s4-val" style="color:var(--wrn);">7.2</div><div class="t3-s4-lbl">UV Index</div></div>
+        <div class="t3-s4"><div class="t3-s4-val" id="dashTempVal" style="color:var(--org);">--</div><div class="t3-s4-lbl">Avg Temp</div></div>
+        <div class="t3-s4"><div class="t3-s4-val" id="dashHumVal" style="color:var(--grn);">--</div><div class="t3-s4-lbl">Humidity</div></div>
+        <div class="t3-s4"><div class="t3-s4-val" id="dashPresVal" style="color:var(--pur);">--</div><div class="t3-s4-lbl">Pressure hPa</div></div>
+        <div class="t3-s4"><div class="t3-s4-val" id="dashUvVal" style="color:var(--wrn);">--</div><div class="t3-s4-lbl">UV Index</div></div>
       </div>
 
       <!-- Launches -->
@@ -469,7 +469,7 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
 <script src="{{ url_for('static', filename='js/orbit-engine.js') }}"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 <script src="{{ url_for('static', filename='js/sensors.js') }}"></script>
-<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}?v=20260530"></script>
 <script src="{{ url_for('static', filename='js/maps.js') }}"></script>
 <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 </body>
