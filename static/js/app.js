@@ -140,5 +140,109 @@ document.querySelectorAll('.launch-item[data-launch]').forEach(function (item) {
     }
     document.querySelectorAll('.launch-item').forEach(function (x) { x.classList.remove('launch-sel'); });
     item.classList.add('launch-sel');
+    showVjToast('Launch details updated in the right panel.');
+  });
+});
+
+var _vjToastTimer;
+function showVjToast(msg) {
+  var toast = el('vjToast');
+  if (!toast) return;
+  toast.textContent = msg;
+  toast.hidden = false;
+  toast.classList.add('visible');
+  clearTimeout(_vjToastTimer);
+  _vjToastTimer = setTimeout(function () {
+    toast.classList.remove('visible');
+    toast.hidden = true;
+  }, 3200);
+}
+
+function activateInsightCard(card) {
+  document.querySelectorAll('.card.ic').forEach(function (c) { c.classList.remove('ic-active'); });
+  card.classList.add('ic-active');
+}
+
+function handleInsightClick(card) {
+  var action = card.getAttribute('data-insight');
+  var sat = card.getAttribute('data-sat');
+  activateInsightCard(card);
+  if (action === 'pass') {
+    focusSatellite(sat || 'VIDYAJYOTI');
+    showVjToast('Opening orbit tracker for tonight\u2019s optimal pass.');
+    return;
+  }
+  if (action === 'aqi') {
+    switchToTab(1);
+    showVjToast('Showing Mumbai air quality and weather telemetry.');
+    return;
+  }
+  if (action === 'battery') {
+    if (typeof updateRightPanel === 'function') updateRightPanel(sat || 'VIDYAJYOTI');
+    focusSatellite(sat || 'VIDYAJYOTI');
+    showVjToast('Power subsystem nominal — 89% battery, 3.4W solar.');
+  }
+}
+
+document.querySelectorAll('.card.ic[data-insight]').forEach(function (card) {
+  card.addEventListener('click', function () { handleInsightClick(card); });
+  card.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleInsightClick(card);
+    }
+  });
+});
+
+document.querySelectorAll('.sec-action[data-action]').forEach(function (btn) {
+  function run() {
+    var action = btn.getAttribute('data-action');
+    if (action === 'signal-details') {
+      switchToTab(3);
+      showVjToast('Signal quality reflects live humidity from Mumbai ground station.');
+      var gauge = el('gaugeCanvas');
+      if (gauge) {
+        gauge.classList.add('panel-flash');
+        setTimeout(function () { gauge.classList.remove('panel-flash'); }, 1200);
+      }
+      return;
+    }
+    if (action === 'all-launches') {
+      switchToTab(3);
+      showVjToast('Showing all upcoming launches on the dashboard.');
+      var launchBlock = document.querySelector('#tab3 .launch-item');
+      if (launchBlock) launchBlock.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+  btn.addEventListener('click', run);
+  btn.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      run();
+    }
+  });
+});
+
+document.querySelectorAll('.cat-row-btn').forEach(function (row) {
+  function run() {
+    var cat = row.getAttribute('data-cat') || row.querySelector('.cat-nm').textContent.trim();
+    var desc = row.getAttribute('data-cat-desc') || cat + ' satellites in active orbit.';
+    var purpose = el('sic-purpose');
+    var code = el('sic-code');
+    var nameEl = el('sic-name');
+    if (purpose) purpose.textContent = desc;
+    if (code) code.textContent = 'CATEGORY \u00b7 GLOBAL FLEET';
+    if (nameEl) nameEl.innerHTML = cat;
+    document.querySelectorAll('.cat-row-btn').forEach(function (x) { x.classList.remove('cat-sel'); });
+    row.classList.add('cat-sel');
+    document.querySelectorAll('.launch-item').forEach(function (x) { x.classList.remove('launch-sel'); });
+    showVjToast(cat + ' — ' + (row.querySelector('.cat-v') || {}).textContent + ' tracked satellites.');
+  }
+  row.addEventListener('click', run);
+  row.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      run();
+    }
   });
 });
