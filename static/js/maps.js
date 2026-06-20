@@ -250,6 +250,9 @@ function updateSatHighlight() {
     }
     lyr.trackLine.setStyle({ opacity: sel ? 1 : 0.35, weight: sel ? 3 : 2.2 });
     lyr.prevTrack.setStyle({ opacity: sel ? 0.45 : 0.18 });
+    if (lyr.footprint) {
+      lyr.footprint.setStyle({ fillOpacity: sel ? 0.09 : 0.05 });
+    }
   });
 }
 
@@ -337,14 +340,29 @@ function setupWorldMapLayers() {
     SATS2.forEach(function (sat) {
       var prevTrack = L.polyline([], { color: sat.color, weight: 1, opacity: 0.28, dashArray: '4 8' }).addTo(worldLeaflet);
       var trackLine = L.polyline([], { color: sat.color, weight: 2.2, opacity: 0.75, dashArray: '8 5' }).addTo(worldLeaflet);
+      var footprint = null;
+      if (sat.name !== 'VIDYAJYOTI') {
+        footprint = L.circle([0, 0], {
+          radius: footprintRadiusM(400),
+          color: sat.color,
+          fillColor: sat.color,
+          fillOpacity: 0.05,
+          weight: 1,
+          dashArray: '4 6'
+        }).addTo(worldLeaflet);
+      }
       var marker = L.marker([GS_LAT, GS_LON], { icon: satIcon(sat.color, sat.name === selectedSatName) }).addTo(worldLeaflet);
       var startPos = satPosition(sat, date);
       if (startPos) marker.setLatLng([startPos.lat, startPos.lon]);
+      if (footprint && startPos) {
+        footprint.setLatLng([startPos.lat, startPos.lon]);
+        footprint.setRadius(footprintRadiusM(startPos.alt_km));
+      }
       marker.on('click', function () { selectSatellite(sat.name); });
       marker.bindPopup(function () {
         return satPopupHtml(sat, satPosition(sat));
       });
-      satLayers[sat.name] = { sat: sat, prevTrack: prevTrack, trackLine: trackLine, marker: marker };
+      satLayers[sat.name] = { sat: sat, prevTrack: prevTrack, trackLine: trackLine, marker: marker, footprint: footprint };
     });
     setMapHint('', false);
     updateSatHighlight();
@@ -398,6 +416,10 @@ async function initWorldMap() {
         var pos = satPosition(sat, date);
         if (!pos) return;
         lyr.marker.setLatLng([pos.lat, pos.lon]);
+        if (lyr.footprint) {
+          lyr.footprint.setLatLng([pos.lat, pos.lon]);
+          lyr.footprint.setRadius(footprintRadiusM(pos.alt_km));
+        }
       });
       updateMttOverlay();
       if (Date.now() - trackRefreshAt > 60000) refreshGroundTracks(false);
