@@ -18,7 +18,7 @@ var orbitDataBanner = '';
 var trackRefreshAt = 0;
 var globeTrackRefreshAt = 0;
 var globePosRefreshAt = 0;
-var globeMarkersSignature = '';
+var lastGlobeMarkersSig = '';
 
 var FALLBACK_SATS = [
   { name: 'VIDYAJYOTI', norad_id: null, color: '#4d9fff', is_simulated: true, status: 'simulated', tle_available: false },
@@ -608,7 +608,7 @@ function buildGlobeMarkers(date) {
   return htmlMarkers;
 }
 
-function globeMarkersSignature(markers) {
+function computeGlobeMarkersSig(markers) {
   return markers.map(function (m) {
     return m.name + ':' + m.lat.toFixed(1) + ':' + m.lng.toFixed(1) + ':' + (m.name === selectedSatName ? '1' : '0');
   }).join('|');
@@ -618,10 +618,10 @@ function refreshGlobeMarkers(force) {
   if (!globeInstance) return;
   var date = new Date();
   var markers = buildGlobeMarkers(date);
-  var sig = globeMarkersSignature(markers);
+  var sig = computeGlobeMarkersSig(markers);
   var now = Date.now();
-  if (!force && sig === globeMarkersSignature && now - globePosRefreshAt < 2500) return;
-  globeMarkersSignature = sig;
+  if (!force && sig === lastGlobeMarkersSig && now - globePosRefreshAt < 2500) return;
+  lastGlobeMarkersSig = sig;
   globePosRefreshAt = now;
   globeInstance.htmlElementsData(markers);
   globeInstance.pointsData([]);
