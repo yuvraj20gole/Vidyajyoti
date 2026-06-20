@@ -17,6 +17,8 @@ var passRows = [];
 var orbitDataBanner = '';
 var trackRefreshAt = 0;
 var globeTrackRefreshAt = 0;
+var globePosRefreshAt = 0;
+var globeMarkersSignature = '';
 
 var FALLBACK_SATS = [
   { name: 'VIDYAJYOTI', norad_id: null, color: '#4d9fff', is_simulated: true, status: 'simulated', tle_available: false },
@@ -215,6 +217,12 @@ function satDopplerLabel(sat) {
   return row && row.doppler ? row.doppler : '\u2014';
 }
 
+function showOrbitSatInfo(show) {
+  var mtt = el('mtt');
+  if (!mtt) return;
+  mtt.style.display = show && activeTab === 2 ? 'block' : 'none';
+}
+
 function groundTrackLabel(lat, lon) {
   if (lon < 72) return 'Arabian Sea';
   if (lon < 80) return 'Western India';
@@ -318,11 +326,18 @@ function selectSatellite(name) {
     lyr.marker.setLatLng([pos.lat, pos.lon]);
     lyr.marker.openPopup();
     worldLeaflet.panTo([pos.lat, pos.lon], { animate: true, duration: 0.6 });
+    showOrbitSatInfo(true);
   }
   if (globeInstance && globeReady) {
     globeInstance.controls().autoRotateSpeed = 0.15;
-    updateGlobePoints(new Date());
+    var sat = findSat(name);
+    var pos = sat ? satPosition(sat, new Date()) : null;
+    if (pos && typeof globeInstance.pointOfView === 'function') {
+      globeInstance.pointOfView({ lat: pos.lat, lng: pos.lon, altitude: 2.1 }, 900);
+    }
+    refreshGlobeMarkers(true);
     updateGlobeTracks(true);
+    showOrbitSatInfo(true);
   }
 }
 
@@ -384,6 +399,7 @@ function setupWorldMapLayers() {
     setMapHint('', false);
     updateSatHighlight();
     updateMttOverlay();
+    showOrbitSatInfo(true);
     setTimeout(function () { refreshGroundTracks(true); }, 50);
     scheduleMapResize();
   });
@@ -441,7 +457,11 @@ async function initWorldMap() {
       updateMttOverlay();
       if (Date.now() - trackRefreshAt > 60000) refreshGroundTracks(false);
     }
-    if (activeTab === 2 && mapMode === 'globe' && globeInstance) updateGlobeData(false);
+    if (activeTab === 2 && mapMode === 'globe' && globeInstance) {
+      refreshGlobeMarkers(false);
+      updateMttOverlay();
+      updateGlobeTracks(false);
+    }
     requestAnimationFrame(tickOrbitMaps);
   }
   tickOrbitMaps();
@@ -483,9 +503,12 @@ function initGlobe() {
         node.innerHTML = '<div class="globe-gs-dot" title="GS MUMBAI"></div>';
         node.title = 'GS MUMBAI';
       } else {
-        node.innerHTML = satMarkerHtml(d.color, d.name === selectedSatName, d.name === selectedSatName ? 36 : 30);
+        var sel = d.name === selectedSatName;
+        node.innerHTML = satMarkerHtml(d.color, sel, sel ? 36 : 30) +
+          (sel ? '<div class="globe-sat-label">' + d.name + '</div>' : '');
         node.title = d.name;
         node.addEventListener('click', function (evt) {
+          evt.preventDefault();
           evt.stopPropagation();
           selectSatellite(d.name);
         });
@@ -563,7 +586,7 @@ function sanitizeGlobePath(coords) {
   });
 }
 
-function updateGlobePoints(date) {
+function buildGlobeMarkers(date) {
   var htmlMarkers = [{
     lat: GS_LAT,
     lng: GS_LON,
@@ -582,8 +605,30 @@ function updateGlobePoints(date) {
       kind: 'sat'
     });
   });
-  globeInstance.htmlElementsData(htmlMarkers);
+  return htmlMarkers;
+}
+
+function globeMarkersSignature(markers) {
+  return markers.map(function (m) {
+    return m.name + ':' + m.lat.toFixed(1) + ':' + m.lng.toFixed(1) + ':' + (m.name === selectedSatName ? '1' : '0');
+  }).join('|');
+}
+
+function refreshGlobeMarkers(force) {
+  if (!globeInstance) return;
+  var date = new Date();
+  var markers = buildGlobeMarkers(date);
+  var sig = globeMarkersSignature(markers);
+  var now = Date.now();
+  if (!force && sig === globeMarkersSignature && now - globePosRefreshAt < 2500) return;
+  globeMarkersSignature = sig;
+  globePosRefreshAt = now;
+  globeInstance.htmlElementsData(markers);
   globeInstance.pointsData([]);
+}
+
+function updateGlobePoints(date) {
+  refreshGlobeMarkers(true);
 }
 
 function updateGlobeTracks(force) {
@@ -610,7 +655,13 @@ function setMapMode(mode, btn) {
     wl.style.display = 'none';
     gw.style.display = 'block';
     initGlobe();
-    setTimeout(function () { resizeGlobe(); updateGlobeData(true); }, 80);
+    setTimeout(function () {
+      resizeGlobe();
+      refreshGlobeMarkers(true);
+      updateGlobeTracks(true);
+      updateMttOverlay();
+      showOrbitSatInfo(true);
+    }, 80);
   } else {
     gw.style.display = 'none';
     wl.style.display = 'block';
