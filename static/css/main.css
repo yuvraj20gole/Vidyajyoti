@@ -305,6 +305,10 @@ html[data-theme="light"] #vjSimBadge{background:rgba(217,119,6,.08);border-color
 .sat-marker-wrap{display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 0 4px rgba(0,0,0,.45));transition:transform .15s ease;}
 .sat-marker-wrap.sel{transform:scale(1.15);filter:drop-shadow(0 0 8px currentColor);}
 .sat-marker-wrap img{display:block;}
+.globe-sat-marker{pointer-events:auto;cursor:pointer;transform:translate(-50%,-50%);}
+.globe-sat-marker .sat-marker-wrap{filter:drop-shadow(0 0 5px rgba(0,0,0,.55));}
+.globe-gs-marker{cursor:default;}
+.globe-gs-dot{width:14px;height:14px;border-radius:50%;background:#ff7c3a;border:2px solid #fff;box-shadow:0 0 8px rgba(255,124,58,.65);}
 #polarCanvas{display:block;border-radius:50%;margin:0 auto;}
 #sigCanvas{display:block;width:100%;}
 

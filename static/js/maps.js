@@ -56,19 +56,24 @@ function vjAccentColor() {
   return getComputedStyle(document.documentElement).getPropertyValue('--acc').trim() || '#4d9fff';
 }
 
+function satMarkerHtml(color, selected, size) {
+  size = size || (selected ? 34 : 28);
+  var stroke = selected ? 2.2 : 1.6;
+  return '<div class="sat-marker-wrap' + (selected ? ' sel' : '') + '" style="color:' + color + '">' +
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="' + size + '" height="' + size + '" aria-hidden="true">' +
+    '<rect x="14" y="6" width="4" height="20" rx="1" fill="' + color + '"/>' +
+    '<rect x="4" y="12" width="24" height="3" rx="1" fill="' + color + '" opacity="0.85"/>' +
+    '<rect x="2" y="10" width="4" height="7" rx="0.5" fill="' + color + '" opacity="0.7"/>' +
+    '<rect x="26" y="10" width="4" height="7" rx="0.5" fill="' + color + '" opacity="0.7"/>' +
+    '<circle cx="16" cy="16" r="3" fill="' + color + '" stroke="#fff" stroke-width="' + stroke + '"/>' +
+    '</svg></div>';
+}
+
 function satIcon(color, selected) {
   var size = selected ? 34 : 28;
-  var stroke = selected ? 2.2 : 1.6;
   return L.divIcon({
     className: 'sat-marker-icon',
-    html: '<div class="sat-marker-wrap' + (selected ? ' sel' : '') + '" style="color:' + color + '">' +
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="' + size + '" height="' + size + '" aria-hidden="true">' +
-      '<rect x="14" y="6" width="4" height="20" rx="1" fill="' + color + '"/>' +
-      '<rect x="4" y="12" width="24" height="3" rx="1" fill="' + color + '" opacity="0.85"/>' +
-      '<rect x="2" y="10" width="4" height="7" rx="0.5" fill="' + color + '" opacity="0.7"/>' +
-      '<rect x="26" y="10" width="4" height="7" rx="0.5" fill="' + color + '" opacity="0.7"/>' +
-      '<circle cx="16" cy="16" r="3" fill="' + color + '" stroke="#fff" stroke-width="' + stroke + '"/>' +
-      '</svg></div>',
+    html: satMarkerHtml(color, selected, size),
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2]
   });
@@ -460,21 +465,32 @@ function initGlobe() {
     .globeImageUrl(isLightMapTheme() ? GLOBE_IMG_LIGHT : GLOBE_IMG_DARK)
     .backgroundColor('rgba(0,0,0,0)')
     .showAtmosphere(true).atmosphereColor(vjAccentColor()).atmosphereAltitude(0.18)
-    .pointAltitude(function (d) {
-      if (d.name === 'GS MUMBAI') return 0.02;
-      return d.name === selectedSatName ? 0.18 : 0.14;
+    .pointsData([])
+    .pointAltitude(0.02)
+    .pointRadius(0.5)
+    .pointColor('color')
+    .pointLabel(function (d) { return d.label || d.name; })
+    .htmlElementsData([])
+    .htmlLat(function (d) { return d.lat; })
+    .htmlLng(function (d) { return d.lng; })
+    .htmlAltitude(function (d) {
+      return d.kind === 'gs' ? 0.02 : (d.name === selectedSatName ? 0.18 : 0.14);
     })
-    .pointRadius(function (d) {
-      if (d.name === 'GS MUMBAI') return 0.55;
-      return d.name === selectedSatName ? 1.1 : 0.75;
-    })
-    .pointColor(function (d) { return d.color; })
-    .pointLabel(function (d) {
-      if (d.name === 'GS MUMBAI') return d.label;
-      return '<b style="color:' + d.color + '">' + d.name + '</b>';
-    })
-    .onPointClick(function (d) {
-      if (d.name && d.name !== 'GS MUMBAI') selectSatellite(d.name);
+    .htmlElement(function (d) {
+      var node = document.createElement('div');
+      node.className = 'globe-sat-marker' + (d.kind === 'gs' ? ' globe-gs-marker' : '');
+      if (d.kind === 'gs') {
+        node.innerHTML = '<div class="globe-gs-dot" title="GS MUMBAI"></div>';
+        node.title = 'GS MUMBAI';
+      } else {
+        node.innerHTML = satMarkerHtml(d.color, d.name === selectedSatName, d.name === selectedSatName ? 36 : 30);
+        node.title = d.name;
+        node.addEventListener('click', function (evt) {
+          evt.stopPropagation();
+          selectSatellite(d.name);
+        });
+      }
+      return node;
     })
     .pathPoints(function (d) { return d.coords; })
     .pathPointLat(function (p) { return p[0]; })
@@ -548,21 +564,26 @@ function sanitizeGlobePath(coords) {
 }
 
 function updateGlobePoints(date) {
-  var points = [{ lat: GS_LAT, lng: GS_LON, name: 'GS MUMBAI', color: '#ff7c3a', label: '<b>GS MUMBAI</b><br>Ground Station Mumbai' }];
+  var htmlMarkers = [{
+    lat: GS_LAT,
+    lng: GS_LON,
+    name: 'GS MUMBAI',
+    kind: 'gs',
+    color: '#ff7c3a'
+  }];
   SATS2.forEach(function (sat) {
     var p = satPosition(sat, date);
     if (!p) return;
-    var meta = typeof VjOrbit !== 'undefined' ? VjOrbit.getMeta(sat.name) : sat;
-    var simNote = meta && meta.is_simulated ? '<br><em>Simulated · India LEO</em>' : '';
-    points.push({
+    htmlMarkers.push({
       lat: p.lat,
       lng: p.lon,
       name: sat.name,
       color: sat.color,
-      label: '<b>' + sat.name + '</b><br>' + p.alt_km.toFixed(1) + ' km' + simNote
+      kind: 'sat'
     });
   });
-  globeInstance.pointsData(points);
+  globeInstance.htmlElementsData(htmlMarkers);
+  globeInstance.pointsData([]);
 }
 
 function updateGlobeTracks(force) {
