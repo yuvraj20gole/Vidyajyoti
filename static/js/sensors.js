@@ -22,7 +22,7 @@ var wxConds = ['Partly Cloudy', 'Mostly Sunny', 'Overcast', 'Hazy', 'Humid'];
 var tempHistory = [];
 for (var ii = 0; ii < 24; ii++) tempHistory.push(28);
 
-var OR = { lat: 22.14, lon: 88.36, alt: 412.6, vel: 7.662, dop: 3.12 };
+var OR = { lat: 20, lon: 78, alt: 412.6, vel: 7.662, dop: 3.12 };
 var GTS = ['Bay of Bengal', 'Tamil Nadu Coast', 'Indian Ocean', 'Arabian Sea', 'Bay of Bengal'];
 var gti = 0;
 
@@ -114,9 +114,19 @@ function updateSensorsClient() {
 }
 
 function updateOrbitClient() {
-  OR.lat = nudge(OR.lat, 0.15, -85, 85);
-  OR.lon = +(OR.lon + 0.4 + (Math.random() - 0.5) * 0.1).toFixed(2);
-  if (OR.lon > 180) OR.lon = -180;
+  if (typeof VjOrbit !== 'undefined') {
+    var p = VjOrbit.propagate('VIDYAJYOTI', new Date());
+    if (p) {
+      gti = (gti + 1) % GTS.length;
+      applyOrbit({
+        lat: p.lat, lon: p.lon, alt: p.alt_km, vel: p.velocity, dop: OR.dop,
+        ground_track: GTS[gti], is_simulated: true
+      });
+      return;
+    }
+  }
+  OR.lat = nudge(OR.lat, 0.15, 8, 35);
+  OR.lon = nudge(OR.lon, 0.15, 68, 92);
   OR.alt = nudge(OR.alt, 0.5, 400, 425);
   OR.vel = nudge(OR.vel, 0.002, 7.6, 7.72);
   OR.dop = nudge(OR.dop, 0.15, -5, 5);

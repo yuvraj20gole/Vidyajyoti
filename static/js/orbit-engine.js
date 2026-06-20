@@ -66,19 +66,27 @@ window.VjOrbit = (function () {
     return EMBEDDED_CATALOG.slice();
   }
 
+  function propagateVidyajyoti(date) {
+    var periodMs = 92 * 60 * 1000;
+    var t = (date.getTime() % periodMs) / periodMs * Math.PI * 2;
+    var lat = 20 + 14 * Math.sin(t);
+    var lon = 78 + 12 * Math.cos(t * 0.92 + 0.35);
+    lon = Math.max(68, Math.min(92, lon));
+    return {
+      lat: lat,
+      lon: lon,
+      alt_km: 412 + 4 * Math.sin(t * 2),
+      velocity: 7.662,
+      heading: 0
+    };
+  }
+
   function propagate(name, date) {
     var meta = catalog[name];
     if (!meta) return null;
 
     if (meta.is_simulated) {
-      if (typeof OR === 'undefined') return null;
-      return {
-        lat: OR.lat,
-        lon: OR.lon,
-        alt_km: OR.alt,
-        velocity: OR.vel,
-        heading: 0
-      };
+      return propagateVidyajyoti(date);
     }
 
     var rec = satrecs[name];
@@ -101,7 +109,9 @@ window.VjOrbit = (function () {
 
   function orbitPeriodMinutes(name) {
     var meta = catalog[name];
-    if (!meta || !meta.line2) return 90;
+    if (!meta) return 90;
+    if (meta.is_simulated) return 92;
+    if (!meta.line2) return 90;
     var parts = meta.line2.trim().split(/\s+/);
     var mm = parseFloat(parts[7]);
     if (!mm || isNaN(mm)) return 90;
