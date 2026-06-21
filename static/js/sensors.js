@@ -34,7 +34,7 @@ function applyTelemetry(data) {
   D.vis = data.vis;
   D.cloud = data.cloud;
   D.rain = data.rain;
-  if (typeof syncSparklineLiveTemp === 'function') syncSparklineLiveTemp(D.temp);
+  if (typeof syncHistoryLiveReading === 'function') syncHistoryLiveReading(D);
 
   function s(id, v) { var e = el(id); if (e) e.textContent = v; }
   function sw(id, pct) { var e = el(id); if (e) e.style.width = Math.max(2, Math.min(100, pct)) + '%'; }

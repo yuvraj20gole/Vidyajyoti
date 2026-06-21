@@ -451,34 +451,61 @@ function drawTempSparkline() {
   }
 }
 
+async function parseOpenMeteoHistoryPayload(payload) {
+  var hourly = payload.hourly || {};
+  var times = hourly.time || [];
+  var temps = hourly.temperature_2m || [];
+  var hums = hourly.relative_humidity_2m || [];
+  var pres = hourly.surface_pressure || [];
+  if (!times.length || !temps.length) return null;
+
+  var nowParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  }).formatToParts(new Date());
+  function part(type) {
+    var p = nowParts.find(function (x) { return x.type === type; });
+    return p ? p.value : '00';
+  }
+  var curKey = part('year') + '-' + part('month') + '-' + part('day') + 'T' + part('hour') + ':00';
+  var idx = times.indexOf(curKey);
+  if (idx < 0) idx = times.length - 1;
+  var start = Math.max(0, idx - 23);
+  var sTimes = times.slice(start, idx + 1);
+  var sTemps = temps.slice(start, idx + 1);
+  var sHums = hums.slice(start, idx + 1);
+  var sPres = pres.slice(start, idx + 1);
+  var nowLabel = part('hour') + ':' + part('minute') + ' (Now)';
+  var labels = sTimes.map(function (t, i) {
+    if (i === sTimes.length - 1) return nowLabel;
+    try { return t.split('T')[1].slice(0, 5); } catch (e) { return '--:--'; }
+  });
+  return {
+    labels: labels,
+    temp: sTemps.map(function (v) { return Math.round(v * 10) / 10; }),
+    hum: sHums.map(function (v) { return Math.round(v * 10) / 10; }),
+    pressure: sPres.map(function (v) { return Math.round((v - 1000) * 10) / 10; }),
+    source: 'Open-Meteo',
+    location: 'Mumbai',
+    updated_at: new Date().toISOString(),
+    window_start: sTimes[0] || null,
+    window_end: sTimes[sTimes.length - 1] || null
+  };
+}
+
 async function fetchOpenMeteoHistoryDirect() {
   var q = [
     'latitude=19.08',
     'longitude=72.88',
     'hourly=temperature_2m,relative_humidity_2m,surface_pressure',
     'timezone=Asia%2FKolkata',
-    'forecast_days=2'
+    'past_days=1',
+    'forecast_days=1'
   ].join('&');
   var res = await fetch('https://api.open-meteo.com/v1/forecast?' + q);
   if (!res.ok) return null;
-  var payload = await res.json();
-  var hourly = payload.hourly || {};
-  var times = (hourly.time || []).slice(-24);
-  var temps = (hourly.temperature_2m || []).slice(-24);
-  var hums = (hourly.relative_humidity_2m || []).slice(-24);
-  var pres = (hourly.surface_pressure || []).slice(-24);
-  if (!temps.length) return null;
-  var labels = times.map(function (t) {
-    try { return t.split('T')[1].slice(0, 5); } catch (e) { return '--:--'; }
-  });
-  return {
-    labels: labels,
-    temp: temps.map(function (v) { return Math.round(v * 10) / 10; }),
-    hum: hums.map(function (v) { return Math.round(v * 10) / 10; }),
-    pressure: pres.map(function (v) { return Math.round((v - 1000) * 10) / 10; }),
-    source: 'Open-Meteo',
-    location: 'Mumbai'
-  };
+  return parseOpenMeteoHistoryPayload(await res.json());
 }
 
 async function fetchTelemetryHistory() {
@@ -496,11 +523,41 @@ async function fetchTelemetryHistory() {
   return null;
 }
 
+function formatHistoryMeta(data) {
+  if (!data) return 'Open-Meteo';
+  var updated = '';
+  if (data.updated_at) {
+    try {
+      updated = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false
+      }).format(new Date(data.updated_at));
+    } catch (e) { /* ignore */ }
+  }
+  var range = '';
+  if (data.window_start && data.window_end) {
+    try {
+      var a = data.window_start.split('T')[1].slice(0, 5);
+      var b = data.window_end.split('T')[1].slice(0, 5);
+      range = ' \u00b7 ' + a + '\u2013' + b + ' IST';
+    } catch (e) { /* ignore */ }
+  }
+  return 'Open-Meteo \u00b7 Mumbai' + range + (updated ? ' \u00b7 Updated ' + updated + ' IST' : '');
+}
+
+function updateChartMetaLabels(data) {
+  var txt = formatHistoryMeta(data);
+  ['climChartMeta', 'dashChartMeta'].forEach(function (id) {
+    var e = el(id);
+    if (e) e.textContent = txt;
+  });
+}
+
 function applyHistoryToCharts(data) {
   if (!data || !data.temp || !data.temp.length) return false;
   window._telemetryHistory = data;
   window._sparklineData = data.temp.slice();
   window._sparklineLabels = (data.labels || []).slice();
+  updateChartMetaLabels(data);
 
   var clim = el('climChart');
   if (clim) {
@@ -538,9 +595,31 @@ window.updateDashStatCards = function (data, live) {
 };
 
 window.syncSparklineLiveTemp = function (temp) {
-  if (window._sparklineData && window._sparklineData.length) {
-    window._sparklineData[window._sparklineData.length - 1] = temp;
+  syncHistoryLiveReading({ temp: temp, hum: typeof D !== 'undefined' ? D.hum : null, pres: typeof D !== 'undefined' ? D.pres : null });
+};
+
+window.syncHistoryLiveReading = function (live) {
+  if (!live || !window._telemetryHistory || !window._telemetryHistory.temp.length) return;
+  var h = window._telemetryHistory;
+  var i = h.temp.length - 1;
+  if (live.temp != null) {
+    h.temp[i] = live.temp;
+    if (window._sparklineData && window._sparklineData.length) window._sparklineData[i] = live.temp;
   }
+  if (live.hum != null) h.hum[i] = live.hum;
+  if (live.pres != null) h.pressure[i] = Math.round((live.pres - 1000) * 10) / 10;
+
+  function patchState(st) {
+    if (!st) return;
+    st.T = h.temp.slice();
+    st.H2 = h.hum.slice();
+    st.P2 = h.pressure.slice();
+    st.labels = h.labels.slice();
+    drawDualClimateChart(st);
+  }
+  patchState(window._climChartState);
+  patchState(window._dashChartState);
+  drawTempSparkline();
 };
 
 window.redrawVjCharts = function () {
@@ -560,17 +639,24 @@ window.refreshVjClimateCharts = function () {
   redrawVjCharts();
 };
 
-async function loadTelemetryHistoryCharts() {
+async function loadTelemetryHistoryCharts(silent) {
   var clim = el('climChart');
   var dash = el('dashChart');
-  if (clim) drawChartLoading(clim, 'Loading climate data…');
-  if (dash && dash.offsetParent !== null) drawChartLoading(dash, 'Loading climate data…');
+  if (!silent) {
+    if (clim) drawChartLoading(clim, 'Loading climate data…');
+    if (dash && dash.offsetParent !== null) drawChartLoading(dash, 'Loading climate data…');
+  }
 
   var data = await fetchTelemetryHistory();
-  if (applyHistoryToCharts(data)) return;
+  if (applyHistoryToCharts(data)) {
+    if (typeof D !== 'undefined') syncHistoryLiveReading(D);
+    return;
+  }
 
-  if (clim) drawChartLoading(clim, 'Climate data unavailable');
-  if (dash) drawChartLoading(dash, 'Climate data unavailable');
+  if (!silent) {
+    if (clim) drawChartLoading(clim, 'Climate data unavailable');
+    if (dash) drawChartLoading(dash, 'Climate data unavailable');
+  }
   drawTempSparkline();
 }
 
@@ -587,6 +673,10 @@ async function loadClimateHistory() {
   }
 }
 loadClimateHistory();
+
+setInterval(function () {
+  loadTelemetryHistoryCharts(true);
+}, 10 * 60 * 1000);
 
 var dashChartReady = false;
 window.loadDashClimateHistory = async function () {

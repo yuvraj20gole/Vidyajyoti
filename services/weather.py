@@ -2,13 +2,16 @@
 
 import os
 import time
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import requests
 
 WEATHER_LAT = float(os.environ.get("WEATHER_LAT", "19.08"))
 WEATHER_LON = float(os.environ.get("WEATHER_LON", "72.88"))
 CACHE_TTL = int(os.environ.get("WEATHER_CACHE_TTL", "600"))
+IST = ZoneInfo("Asia/Kolkata")
 
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
@@ -96,6 +99,60 @@ def _fetch_forecast(lat: float, lon: float) -> dict:
     return resp.json()
 
 
+def _fetch_forecast_history(lat: float, lon: float) -> dict:
+    """Hourly series with yesterday + today so we can slice the last 24h ending now."""
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": [
+            "temperature_2m",
+            "relative_humidity_2m",
+            "surface_pressure",
+        ],
+        "timezone": "Asia/Kolkata",
+        "past_days": 1,
+        "forecast_days": 1,
+    }
+    resp = requests.get(FORECAST_URL, params=params, timeout=15)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def _build_history_payload(hourly: dict) -> dict:
+    times = hourly.get("time", [])
+    temps = hourly.get("temperature_2m", [])
+    hums = hourly.get("relative_humidity_2m", [])
+    pres = hourly.get("surface_pressure", [])
+    now = datetime.now(IST)
+    cur_key = now.strftime("%Y-%m-%dT%H:00")
+    idx = times.index(cur_key) if cur_key in times else max(0, len(times) - 1)
+    start = max(0, idx - 23)
+    s_times = times[start : idx + 1]
+    s_temps = temps[start : idx + 1]
+    s_hums = hums[start : idx + 1]
+    s_pres = pres[start : idx + 1]
+    labels = []
+    for i, t in enumerate(s_times):
+        try:
+            label = t.split("T")[1][:5]
+        except (IndexError, AttributeError):
+            label = "--:--"
+        if i == len(s_times) - 1:
+            label = f"{now.strftime('%H:%M')} (Now)"
+        labels.append(label)
+    return {
+        "labels": labels,
+        "temp": [round(float(v), 1) for v in s_temps],
+        "hum": [round(float(v), 1) for v in s_hums],
+        "pressure": [round(float(v) - 1000, 1) for v in s_pres],
+        "source": "Open-Meteo",
+        "location": "Mumbai",
+        "updated_at": now.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "window_start": s_times[0] if s_times else None,
+        "window_end": s_times[-1] if s_times else None,
+    }
+
+
 def _fetch_air_quality(lat: float, lon: float) -> dict:
     params = {
         "latitude": lat,
@@ -146,26 +203,8 @@ def get_telemetry() -> dict:
 
 def get_telemetry_history() -> dict:
     def fetch():
-        forecast = _fetch_forecast(WEATHER_LAT, WEATHER_LON)
-        hourly = forecast.get("hourly", {})
-        times = hourly.get("time", [])[-24:]
-        temps = hourly.get("temperature_2m", [])[-24:]
-        hums = hourly.get("relative_humidity_2m", [])[-24:]
-        pres = hourly.get("surface_pressure", [])[-24:]
-        labels = []
-        for t in times:
-            try:
-                labels.append(t.split("T")[1][:5])
-            except (IndexError, AttributeError):
-                labels.append("--:--")
-        return {
-            "labels": labels,
-            "temp": [round(float(v), 1) for v in temps],
-            "hum": [round(float(v), 1) for v in hums],
-            "pressure": [round(float(v) - 1000, 1) for v in pres],
-            "source": "Open-Meteo",
-            "location": "Mumbai",
-        }
+        forecast = _fetch_forecast_history(WEATHER_LAT, WEATHER_LON)
+        return _build_history_payload(forecast.get("hourly", {}))
 
     return _cached("history", fetch)
 

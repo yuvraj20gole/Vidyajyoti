@@ -209,7 +209,7 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
 
       <!-- 24h chart -->
       <div class="t1-chart-wrap">
-        <div class="t1-chart-title">24h Climate History &mdash; Mumbai <span class="data-source">Live &middot; Open-Meteo</span></div>
+        <div class="t1-chart-title">24h Climate History &mdash; Mumbai <span class="data-source" id="climChartMeta">Open-Meteo &middot; loading…</span></div>
         <div class="chart-canvas-wrap">
           <canvas id="climChart"></canvas>
         </div>
@@ -305,7 +305,7 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
       <!-- India map + climate chart side by side -->
       <div class="t3-main">
         <div class="t3-half">
-          <div class="t3-sec-title">Climate History 24h &mdash; Mumbai <span class="data-source">Open-Meteo</span></div>
+          <div class="t3-sec-title">Climate History 24h &mdash; Mumbai <span class="data-source" id="dashChartMeta">Open-Meteo &middot; loading…</span></div>
           <div class="chart-canvas-wrap">
             <canvas id="dashChart"></canvas>
           </div>
@@ -470,7 +470,7 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
 <script src="{{ url_for('static', filename='js/orbit-engine.js') }}"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}?v=20260530b"></script>
 <script src="{{ url_for('static', filename='js/sensors.js') }}"></script>
-<script src="{{ url_for('static', filename='js/charts.js') }}?v=20260530"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}?v=20260621"></script>
 <script src="{{ url_for('static', filename='js/maps.js') }}"></script>
 <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 </body>
