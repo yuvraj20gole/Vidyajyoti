@@ -1,3 +1,5 @@
+import logging
+
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
 
@@ -7,6 +9,8 @@ from services.passes import get_passes
 from services.sensors import get_sensor_data, update_sensor_data
 from services.tle import get_satellites
 from services.weather import get_cities_weather, get_telemetry, get_telemetry_history
+
+logger = logging.getLogger(__name__)
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -79,7 +83,7 @@ def sensor_ingest():
     import os
     expected_key = os.environ.get("SENSOR_API_KEY", "")
     provided_key = request.headers.get("X-Sensor-Key", "")
-    print(f"DEBUG: expected_key={repr(expected_key)}, provided_key={repr(provided_key)}, match={expected_key == provided_key}")
+    logger.warning(f"DEBUG SENSOR: expected={repr(expected_key)} provided={repr(provided_key)} match={expected_key == provided_key}")
     if not expected_key or provided_key != expected_key:
         return jsonify({"error": "unauthorized"}), 401
     try:
