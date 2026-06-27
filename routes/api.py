@@ -1,9 +1,10 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from flask_login import login_required
 
 from data.generators import get_orbit
 from services.jsonutil import json_safe
 from services.passes import get_passes
+from services.sensors import get_sensor_data, update_sensor_data
 from services.tle import get_satellites
 from services.weather import get_cities_weather, get_telemetry, get_telemetry_history
 
@@ -60,5 +61,29 @@ def satellites():
 def passes():
     try:
         return jsonify(json_safe(get_passes()))
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@api_bp.get("/sensor")
+@login_required
+def sensor():
+    try:
+        return jsonify(json_safe(get_sensor_data()))
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@api_bp.post("/sensor")
+def sensor_ingest():
+    import os
+    expected_key = os.environ.get("SENSOR_API_KEY", "")
+    provided_key = request.headers.get("X-Sensor-Key", "")
+    if not expected_key or provided_key != expected_key:
+        return jsonify({"error": "unauthorized"}), 401
+    try:
+        payload = request.get_json(force=True)
+        updated = update_sensor_data(payload)
+        return jsonify(json_safe(updated))
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
