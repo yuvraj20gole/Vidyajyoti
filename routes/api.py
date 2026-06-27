@@ -83,9 +83,14 @@ def sensor_ingest():
     import os
     expected_key = os.environ.get("SENSOR_API_KEY", "")
     provided_key = request.headers.get("X-Sensor-Key", "")
-    logger.warning(f"DEBUG SENSOR: expected={repr(expected_key)} provided={repr(provided_key)} match={expected_key == provided_key}")
     if not expected_key or provided_key != expected_key:
-        return jsonify({"error": "unauthorized"}), 401
+        return jsonify({
+            "error": "unauthorized",
+            "debug_expected": expected_key,
+            "debug_provided": provided_key,
+            "debug_expected_len": len(expected_key),
+            "debug_provided_len": len(provided_key),
+        }), 401
     try:
         payload = request.get_json(force=True)
         updated = update_sensor_data(payload)
