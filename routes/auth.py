@@ -39,6 +39,8 @@ def enforce_authentication():
         return None
     if path.startswith("/api/auth/"):
         return None
+    if path == "/api/sensor" and request.method == "POST":
+        return None
     if current_user.is_authenticated:
         return None
     if path.startswith("/api/"):
