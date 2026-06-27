@@ -207,6 +207,41 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
         </div>
       </div>
 
+      <!-- Live ESP32 sensor feed -->
+      <div class="t1-chart-wrap esp32-feed-wrap" id="esp32SensorFeed">
+        <div class="esp32-feed-header">
+          <div class="t1-chart-title" style="margin-bottom:0;">Live Sensor Feed &mdash; ESP32</div>
+          <div class="esp32-feed-status">
+            <div class="sdot off" id="esp32ConnDot" aria-hidden="true"></div>
+            <span class="esp32-conn-label" id="esp32ConnLabel">Offline</span>
+            <span class="esp32-age" id="esp32AgeLabel">No live sensor data yet</span>
+          </div>
+        </div>
+        <div class="esp32-empty" id="esp32EmptyState">No live sensor data yet &mdash; waiting for ESP32 readings</div>
+        <div class="t1-grid esp32-metrics" id="esp32MetricsGrid" hidden>
+          <div class="t1-metric">
+            <div class="card-shine"></div>
+            <div class="tm-lbl">Temperature (sensor)</div>
+            <div><span class="tm-val" id="esp32TempVal">--</span><span class="tm-unit" style="color:var(--org);">&deg;C</span></div>
+          </div>
+          <div class="t1-metric">
+            <div class="card-shine"></div>
+            <div class="tm-lbl">Humidity (sensor)</div>
+            <div><span class="tm-val" id="esp32HumVal" style="color:var(--grn);">--</span><span class="tm-unit" style="color:var(--grn);">%</span></div>
+          </div>
+          <div class="t1-metric">
+            <div class="card-shine"></div>
+            <div class="tm-lbl">Distance / Simulated Altitude</div>
+            <div><span class="tm-val" id="esp32DistVal" style="color:var(--acc);">--</span><span class="tm-unit" style="color:var(--acc);">cm</span></div>
+          </div>
+          <div class="t1-metric">
+            <div class="card-shine"></div>
+            <div class="tm-lbl">IR Sensor State</div>
+            <div><span class="tm-val" id="esp32IrVal" style="color:var(--pur);font-size:1.1rem;">--</span></div>
+          </div>
+        </div>
+      </div>
+
       <!-- 24h chart -->
       <div class="t1-chart-wrap">
         <div class="t1-chart-title">24h Climate History &mdash; Mumbai <span class="data-source" id="climChartMeta">Open-Meteo &middot; loading…</span></div>

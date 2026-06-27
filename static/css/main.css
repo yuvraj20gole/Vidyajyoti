@@ -220,6 +220,7 @@ html[data-theme="light"] .neb-c{background:radial-gradient(circle,rgba(14,165,23
 .sdot{width:6px;height:6px;border-radius:50%;animation:blink 1.8s ease-in-out infinite;}
 .sdot.g{background:var(--grn);box-shadow:0 0 6px var(--grn);}
 .sdot.w{background:var(--wrn);box-shadow:0 0 6px var(--wrn);animation-duration:.9s;}
+.sdot.off{background:var(--dim);box-shadow:none;animation:none;opacity:.65;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
 
 /* ── APP LAYOUT ── */
@@ -325,6 +326,19 @@ html[data-theme="light"] .t1-big.hum-card .hum-bar-fill{background:linear-gradie
 .t1-chart-wrap{background:var(--glass2);border:1px solid var(--b1);border-radius:8px;padding:12px 14px 14px;position:relative;overflow:visible;box-shadow:var(--shadow-sm);}
 .t1-chart-wrap::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acc),transparent);opacity:.4;}
 .t1-chart-title{font-family:var(--fm);font-size:.65rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
+
+.esp32-feed-wrap{margin-bottom:12px;}
+.esp32-feed-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;}
+.esp32-feed-status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--fm);font-size:.58rem;color:var(--dim);}
+.esp32-conn-label{color:var(--txt);letter-spacing:.5px;}
+.esp32-age{color:var(--dim);letter-spacing:.3px;}
+.esp32-age::before{content:'·';margin-right:8px;opacity:.5;}
+.esp32-empty{
+  padding:18px 14px;text-align:center;font-family:var(--fb);font-size:.72rem;color:var(--dim);
+  border:1px dashed var(--b2);border-radius:6px;background:var(--surface-row);
+}
+.esp32-metrics{margin-bottom:0;}
+html[data-theme="light"] .esp32-empty{background:rgba(29,78,216,0.06);border-color:rgba(29,78,216,0.2);}
 
 .chart-canvas-wrap{width:100%;margin-bottom:0;position:relative;}
 .chart-canvas-wrap canvas,#climChart,#dashChart,#tempSparkline,#gaugeCanvas{cursor:crosshair;}
