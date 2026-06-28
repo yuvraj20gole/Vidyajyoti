@@ -207,6 +207,41 @@ window.VJ_SAT_ICON = "images/satellite.svg";
         </div>
       </div>
 
+      <!-- Live ESP32 sensor feed -->
+      <div class="t1-chart-wrap esp32-feed-wrap" id="esp32SensorFeed">
+        <div class="esp32-feed-header">
+          <div class="t1-chart-title" style="margin-bottom:0;">Live Sensor Feed &mdash; ESP32</div>
+          <div class="esp32-feed-status">
+            <div class="sdot off" id="esp32ConnDot" aria-hidden="true"></div>
+            <span class="esp32-conn-label" id="esp32ConnLabel">Offline</span>
+            <span class="esp32-age" id="esp32AgeLabel">No live sensor data yet</span>
+          </div>
+        </div>
+        <div class="esp32-empty" id="esp32EmptyState">No live sensor data yet &mdash; waiting for ESP32 readings</div>
+        <div class="t1-grid esp32-metrics" id="esp32MetricsGrid" hidden>
+          <div class="t1-metric">
+            <div class="card-shine"></div>
+            <div class="tm-lbl">Temperature (sensor)</div>
+            <div><span class="tm-val" id="esp32TempVal">--</span><span class="tm-unit" style="color:var(--org);">&deg;C</span></div>
+          </div>
+          <div class="t1-metric">
+            <div class="card-shine"></div>
+            <div class="tm-lbl">Humidity (sensor)</div>
+            <div><span class="tm-val" id="esp32HumVal" style="color:var(--grn);">--</span><span class="tm-unit" style="color:var(--grn);">%</span></div>
+          </div>
+          <div class="t1-metric">
+            <div class="card-shine"></div>
+            <div class="tm-lbl">Distance / Simulated Altitude</div>
+            <div><span class="tm-val" id="esp32DistVal" style="color:var(--acc);">--</span><span class="tm-unit" style="color:var(--acc);">cm</span></div>
+          </div>
+          <div class="t1-metric">
+            <div class="card-shine"></div>
+            <div class="tm-lbl">IR Sensor State</div>
+            <div><span class="tm-val" id="esp32IrVal" style="color:var(--pur);font-size:1.1rem;">--</span></div>
+          </div>
+        </div>
+      </div>
+
       <!-- 24h chart -->
       <div class="t1-chart-wrap">
         <div class="t1-chart-title">24h Climate History &mdash; Mumbai <span class="data-source" id="climChartMeta">Open-Meteo &middot; loading…</span></div>
@@ -237,34 +272,37 @@ window.VJ_SAT_ICON = "images/satellite.svg";
       <div id="view-toggle">
         <button class="vtbtn active" onclick="setMapMode('map',this)">World Map</button>
         <button class="vtbtn" onclick="setMapMode('globe',this)">3D Globe</button>
+        <div id="mapOverlayControls">
+          <button type="button" class="map-ov-btn active" id="toggleMtt" aria-expanded="true">Sat Info</button>
+          <button type="button" class="map-ov-btn" id="togglePolar" aria-expanded="false">Sky Plot</button>
+          <button type="button" class="map-ov-btn" id="toggleSig" aria-expanded="false">Signal</button>
+        </div>
       </div>
       <div id="mapStage">
       <div id="orbitDataBanner" class="orbit-data-banner" hidden></div>
       <div id="mapLoadHint" class="map-fallback-msg">Loading map…</div>
       <div id="worldMapLeaflet"></div>
       <div id="globeWrap"></div>
-      <!-- Polar plot overlay -->
+      <!-- Polar plot overlay (collapsed by default — use Sky Plot toggle) -->
       <div id="polarOverlay" class="map-overlay map-overlay-panel">
         <div class="map-overlay-title">Sky Plot &mdash; Azimuth &amp; Elevation</div>
-        <div class="map-overlay-sub">Selected satellite position from Mumbai ground station</div>
-        <canvas id="polarCanvas" width="200" height="200"></canvas>
+        <div class="map-overlay-sub">Selected satellite only &middot; Mumbai GS</div>
+        <canvas id="polarCanvas" width="160" height="160"></canvas>
         <div class="chart-legend">
           <div class="chart-legend-item"><span class="chart-swatch sw-acc"></span>Satellite direction</div>
-          <div class="chart-legend-item"><span class="chart-swatch sw-muted"></span>Elevation rings (10&deg; steps)</div>
         </div>
       </div>
-      <!-- Signal strength overlay -->
+      <!-- Signal strength overlay (collapsed by default) -->
       <div id="sigOverlay" class="map-overlay map-overlay-panel">
         <div class="map-overlay-title">Downlink Signal Strength</div>
-        <div class="map-overlay-sub">Estimated from satellite elevation angle</div>
-        <canvas id="sigCanvas" width="300" height="120"></canvas>
+        <div class="map-overlay-sub">Selected satellite only</div>
+        <canvas id="sigCanvas" width="220" height="90"></canvas>
         <div class="chart-legend">
           <div class="chart-legend-item"><span class="chart-swatch sw-acc"></span>Signal quality (%)</div>
-          <div class="chart-legend-item"><span class="chart-swatch sw-muted"></span>0 &ndash; 100 scale</div>
         </div>
       </div>
-      <!-- Map tooltip -->
-      <div id="mtt">
+      <!-- Selected satellite info (compact, top-right) -->
+      <div id="mtt" class="map-overlay-open">
         <div class="mtt-name" id="mttName">VO-52</div>
         <div class="mtt-row"><span class="mtt-k">Az</span><span class="mtt-v" id="mttAz">305.8&deg;</span></div>
         <div class="mtt-row"><span class="mtt-k">El</span><span class="mtt-v" id="mttEl">24.4&deg;</span></div>
@@ -316,7 +354,7 @@ window.VJ_SAT_ICON = "images/satellite.svg";
           </div>
         </div>
         <div class="t3-map-panel" style="margin-bottom:0;">
-          <div class="t3-map-title">&#128752; India &mdash; Climate Map</div>
+          <div class="t3-map-title">&#128752; India &mdash; Climate Map <span class="map-compliance-note">Survey of India boundary</span></div>
           <div id="indiaMapLeaflet"></div>
         </div>
       </div>

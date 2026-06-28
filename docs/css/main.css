@@ -220,6 +220,7 @@ html[data-theme="light"] .neb-c{background:radial-gradient(circle,rgba(14,165,23
 .sdot{width:6px;height:6px;border-radius:50%;animation:blink 1.8s ease-in-out infinite;}
 .sdot.g{background:var(--grn);box-shadow:0 0 6px var(--grn);}
 .sdot.w{background:var(--wrn);box-shadow:0 0 6px var(--wrn);animation-duration:.9s;}
+.sdot.off{background:var(--dim);box-shadow:none;animation:none;opacity:.65;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
 
 /* ── APP LAYOUT ── */
@@ -326,6 +327,19 @@ html[data-theme="light"] .t1-big.hum-card .hum-bar-fill{background:linear-gradie
 .t1-chart-wrap::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acc),transparent);opacity:.4;}
 .t1-chart-title{font-family:var(--fm);font-size:.65rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
 
+.esp32-feed-wrap{margin-bottom:12px;}
+.esp32-feed-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;}
+.esp32-feed-status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--fm);font-size:.58rem;color:var(--dim);}
+.esp32-conn-label{color:var(--txt);letter-spacing:.5px;}
+.esp32-age{color:var(--dim);letter-spacing:.3px;}
+.esp32-age::before{content:'·';margin-right:8px;opacity:.5;}
+.esp32-empty{
+  padding:18px 14px;text-align:center;font-family:var(--fb);font-size:.72rem;color:var(--dim);
+  border:1px dashed var(--b2);border-radius:6px;background:var(--surface-row);
+}
+.esp32-metrics{margin-bottom:0;}
+html[data-theme="light"] .esp32-empty{background:rgba(29,78,216,0.06);border-color:rgba(29,78,216,0.2);}
+
 .chart-canvas-wrap{width:100%;margin-bottom:0;position:relative;}
 .chart-canvas-wrap canvas,#climChart,#dashChart,#tempSparkline,#gaugeCanvas{cursor:crosshair;}
 #climChart,#dashChart{width:100%;display:block;height:200px;min-height:200px;}
@@ -399,20 +413,27 @@ html[data-theme="light"] .settings-success{background:rgba(5,150,105,.1);border-
 .col-g{color:var(--grn);}
 .col-o{color:var(--org);}
 
-/* Map tooltip */
-#mtt{position:absolute;top:56px;left:12px;z-index:40;pointer-events:none;display:none;
+/* Map tooltip — selected satellite only, compact top-right */
+#mtt{position:absolute;top:56px;right:12px;left:auto;z-index:40;pointer-events:none;
   background:var(--surface-overlay);border:1px solid var(--b2);border-radius:6px;
-  padding:8px 12px;font-family:var(--fm);font-size:.6rem;backdrop-filter:blur(12px);box-shadow:var(--shadow-md);min-width:140px;}
-.mtt-name{color:var(--white);font-size:.66rem;font-weight:600;margin-bottom:4px;}
-.mtt-row{display:flex;justify-content:space-between;gap:14px;margin-bottom:2px;}
+  padding:6px 10px;font-family:var(--fm);font-size:.58rem;backdrop-filter:blur(12px);box-shadow:var(--shadow-md);min-width:130px;}
+.mtt-name{color:var(--white);font-size:.62rem;font-weight:600;margin-bottom:3px;}
+.mtt-row{display:flex;justify-content:space-between;gap:10px;margin-bottom:1px;}
 .mtt-k{color:var(--dim);}.mtt-v{color:var(--acc);}
 
-/* Polar + signal overlays */
-#sigOverlay{position:absolute;left:12px;bottom:82px;z-index:20;}
-#polarOverlay{position:absolute;right:12px;bottom:82px;z-index:20;}
-.map-overlay-panel{min-width:220px;padding:10px 12px 8px;}
-.map-overlay-title{font-family:var(--fh);font-size:.58rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--white);margin-bottom:2px;}
-.map-overlay-sub{font-family:var(--fm);font-size:.48rem;color:var(--dim);margin-bottom:8px;line-height:1.35;}
+/* Polar + signal overlays — hidden until toggled; docked to corners */
+#sigOverlay{position:absolute;left:12px;bottom:12px;z-index:20;display:none;}
+#polarOverlay{position:absolute;right:12px;bottom:12px;z-index:20;display:none;}
+#sigOverlay.map-overlay-open,#polarOverlay.map-overlay-open{display:block;}
+.map-overlay-panel{min-width:180px;max-width:240px;padding:8px 10px 6px;}
+.map-overlay-title{font-family:var(--fh);font-size:.54rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--white);margin-bottom:2px;}
+.map-overlay-sub{font-family:var(--fm);font-size:.46rem;color:var(--dim);margin-bottom:6px;line-height:1.35;}
+.map-compliance-note{font-family:var(--fm);font-size:.48rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-left:6px;}
+#mapOverlayControls{display:flex;gap:2px;margin-left:8px;padding-left:8px;border-left:1px solid var(--divider-soft);}
+.map-ov-btn{padding:5px 10px;border-radius:18px;font-family:var(--fm);font-size:.52rem;letter-spacing:.8px;
+  color:var(--dim);background:transparent;border:none;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.map-ov-btn:hover{color:var(--white);}
+.map-ov-btn.active{color:var(--white);background:var(--accent-soft);}
 .orbit-data-banner{position:absolute;top:52px;left:50%;transform:translateX(-50%);z-index:25;padding:6px 14px;border-radius:6px;background:var(--surface-overlay);border:1px solid var(--wrn);color:var(--wrn);font-family:var(--fm);font-size:.58rem;letter-spacing:.5px;box-shadow:var(--shadow-md);}
 .data-source{font-family:var(--fm);font-size:.52rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-left:6px;}
 .pt-section-title{padding:8px 12px 4px;font-family:var(--fm);font-size:.55rem;letter-spacing:2px;text-transform:uppercase;color:var(--dim);}
@@ -436,8 +457,9 @@ html[data-theme="light"] #vjSimBadge{background:rgba(180,83,9,.14);border-color:
 
 /* view-mode toggle */
 #view-toggle{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:30;
-  display:flex;gap:2px;background:var(--surface-overlay);border:1px solid var(--b2);border-radius:22px;
-  padding:3px;backdrop-filter:blur(18px);box-shadow:var(--shadow-md);}
+  display:flex;align-items:center;flex-wrap:wrap;justify-content:center;gap:2px;max-width:calc(100% - 24px);
+  background:var(--surface-overlay);border:1px solid var(--b2);border-radius:22px;
+  padding:3px 6px;backdrop-filter:blur(18px);box-shadow:var(--shadow-md);}
 .vtbtn{padding:5px 14px;border-radius:18px;font-family:var(--fm);font-size:.6rem;letter-spacing:1px;
   color:var(--dim);background:transparent;border:none;cursor:pointer;transition:all .2s;}
 .vtbtn.active{color:var(--white);background:var(--tab-active-bg);box-shadow:var(--tab-active-shadow);}

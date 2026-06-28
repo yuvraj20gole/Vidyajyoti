@@ -38,13 +38,25 @@ var SAT_META = {
   'HO-68': { code: 'XW-1 \u00b7 LEO \u00b7 CelesTrak', label: 'HO-68<br>XW-1', purpose: 'Amateur radio \u00b7 Hope Oscar' }
 };
 
-/* Dark Carto base (no local-language labels) + Esri English reference labels on top. */
-var CARTO_DARK_BASE = 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png';
-var CARTO_LIGHT_BASE = 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
+/* Satellite imagery base (no incorrect political borders) + Esri English labels on orbit map. */
+var ESRI_IMAGERY = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 var EN_LABELS_DARK = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
 var EN_LABELS_LIGHT = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
-var MAP_TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a> &copy; Esri';
+var MAP_TILE_ATTR = '&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Earthstar Geographics';
+var INDIA_OUTLINE_URL = null;
+
+function indiaOutlineUrl() {
+  if (INDIA_OUTLINE_URL) return INDIA_OUTLINE_URL;
+  var script = document.querySelector('script[src*="maps.js"]');
+  if (script && script.src) {
+    INDIA_OUTLINE_URL = script.src.replace(/js\/maps\.js(\?.*)?$/, 'data/india-outline.geojson');
+    return INDIA_OUTLINE_URL;
+  }
+  INDIA_OUTLINE_URL = '/static/data/india-outline.geojson';
+  return INDIA_OUTLINE_URL;
+}
 var mapTileLayers = { world: null, india: null };
+var indiaBoundaryLayers = {};
 var GLOBE_IMG_DARK = 'https://unpkg.com/three-globe/example/img/earth-night.jpg';
 var GLOBE_IMG_LIGHT = 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
 
@@ -52,12 +64,11 @@ function isLightMapTheme() {
   return document.documentElement.getAttribute('data-theme') === 'light';
 }
 
-function cartoBaseOptions() {
+function imageryBaseOptions(minZoom) {
   return {
     attribution: MAP_TILE_ATTR,
-    subdomains: 'abcd',
     maxZoom: 19,
-    minZoom: 2,
+    minZoom: minZoom || 1,
     keepBuffer: 2,
     updateWhenIdle: true,
     updateWhenZooming: false,
@@ -69,7 +80,7 @@ function cartoBaseOptions() {
 function englishLabelOptions() {
   return {
     maxZoom: 16,
-    minZoom: 2,
+    minZoom: 1,
     keepBuffer: 2,
     updateWhenIdle: true,
     updateWhenZooming: false,
@@ -78,17 +89,47 @@ function englishLabelOptions() {
   };
 }
 
-function createEnglishMapLayers() {
-  if (isLightMapTheme()) {
-    return [
-      L.tileLayer(CARTO_LIGHT_BASE, cartoBaseOptions()),
-      L.tileLayer(EN_LABELS_LIGHT, englishLabelOptions())
-    ];
-  }
+function createWorldOrbitMapLayers() {
   return [
-    L.tileLayer(CARTO_DARK_BASE, cartoBaseOptions()),
-    L.tileLayer(EN_LABELS_DARK, englishLabelOptions())
+    L.tileLayer(ESRI_IMAGERY, imageryBaseOptions(1)),
+    L.tileLayer(isLightMapTheme() ? EN_LABELS_LIGHT : EN_LABELS_DARK, englishLabelOptions())
   ];
+}
+
+function createIndiaMapLayers() {
+  return [L.tileLayer(ESRI_IMAGERY, imageryBaseOptions(3))];
+}
+
+function indiaBoundaryStyle() {
+  return {
+    color: isLightMapTheme() ? '#c45c00' : '#ff9933',
+    fillColor: isLightMapTheme() ? '#ff9933' : '#ff9933',
+    fillOpacity: 0.08,
+    weight: 2.5,
+    opacity: 0.95
+  };
+}
+
+function addIndiaBoundaryOverlay(map, key) {
+  if (!map || indiaBoundaryLayers[key]) return;
+  var url = indiaOutlineUrl();
+  fetch(url)
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (data) {
+      if (!data || !map) return;
+      indiaBoundaryLayers[key] = L.geoJSON(data, {
+        style: indiaBoundaryStyle,
+        interactive: false
+      }).addTo(map);
+    })
+    .catch(function () { /* outline optional */ });
+}
+
+function refreshIndiaBoundaryStyle() {
+  Object.keys(indiaBoundaryLayers).forEach(function (key) {
+    var layer = indiaBoundaryLayers[key];
+    if (layer && layer.setStyle) layer.setStyle(indiaBoundaryStyle());
+  });
 }
 
 function removeStoredTileLayers(map, key) {
@@ -100,9 +141,10 @@ function removeStoredTileLayers(map, key) {
 }
 
 function addReliableTiles(map, storeKey) {
-  var layers = createEnglishMapLayers();
+  var layers = storeKey === 'india' ? createIndiaMapLayers() : createWorldOrbitMapLayers();
   layers.forEach(function (layer) { layer.addTo(map); });
   if (storeKey) mapTileLayers[storeKey] = layers;
+  if (storeKey === 'india' || storeKey === 'world') addIndiaBoundaryOverlay(map, storeKey);
   return layers;
 }
 
@@ -193,10 +235,11 @@ window.refreshMapTheme = function () {
     var map = pair[1];
     if (!map || !mapTileLayers[key]) return;
     removeStoredTileLayers(map, key);
-    var layers = createEnglishMapLayers();
+    var layers = key === 'india' ? createIndiaMapLayers() : createWorldOrbitMapLayers();
     layers.forEach(function (layer) { layer.addTo(map); });
     mapTileLayers[key] = layers;
   });
+  refreshIndiaBoundaryStyle();
   if (globeInstance && globeReady) {
     globeInstance
       .globeImageUrl(isLightMapTheme() ? GLOBE_IMG_LIGHT : GLOBE_IMG_DARK)
@@ -225,6 +268,60 @@ function footprintRadiusM(altKm) {
   return Math.min(2200000, 350000 + altKm * 2800);
 }
 
+function satColorRgba(hex, alpha) {
+  var h = String(hex || '#4d9fff').replace('#', '');
+  if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
+  var r = parseInt(h.slice(0, 2), 16);
+  var g = parseInt(h.slice(2, 4), 16);
+  var b = parseInt(h.slice(4, 6), 16);
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+}
+
+function circleRingCoords(lat, lon, radiusM, numPoints) {
+  numPoints = numPoints || 72;
+  var earthR = 6378137;
+  var angular = radiusM / earthR;
+  var lat1 = lat * Math.PI / 180;
+  var lon1 = lon * Math.PI / 180;
+  var ring = [];
+  for (var i = 0; i <= numPoints; i++) {
+    var brng = (2 * Math.PI * i) / numPoints;
+    var lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(angular) +
+      Math.cos(lat1) * Math.sin(angular) * Math.cos(brng)
+    );
+    var lon2 = lon1 + Math.atan2(
+      Math.sin(brng) * Math.sin(angular) * Math.cos(lat1),
+      Math.cos(angular) - Math.sin(lat1) * Math.sin(lat2)
+    );
+    ring.push([lon2 * 180 / Math.PI, lat2 * 180 / Math.PI]);
+  }
+  return ring;
+}
+
+function buildGlobeFootprint(date) {
+  var sat = findSat(selectedSatName);
+  if (!sat) return [];
+  var pos = satPosition(sat, date || new Date());
+  if (!pos) return [];
+  var color = sat.color || '#4d9fff';
+  var radiusM = footprintRadiusM(pos.alt_km);
+  return [{
+    name: sat.name,
+    geometry: {
+      type: 'Polygon',
+      coordinates: [circleRingCoords(pos.lat, pos.lon, radiusM)]
+    },
+    capColor: satColorRgba(color, 0.24),
+    strokeColor: color
+  }];
+}
+
+function updateGlobeFootprint() {
+  if (!globeInstance || !globeReady) return;
+  globeInstance.polygonsData(buildGlobeFootprint(new Date()));
+}
+
 function satPopupHtml(sat, pos) {
   var meta = typeof VjOrbit !== 'undefined' ? VjOrbit.getMeta(sat.name) : sat;
   var sim = meta && meta.is_simulated;
@@ -246,7 +343,11 @@ function satDopplerLabel(sat) {
 function showOrbitSatInfo(show) {
   var mtt = el('mtt');
   if (!mtt) return;
-  mtt.style.display = show && activeTab === 2 ? 'block' : 'none';
+  if (!show || activeTab !== 2) {
+    mtt.style.display = 'none';
+    return;
+  }
+  mtt.style.display = mtt.classList.contains('map-overlay-open') ? 'block' : 'none';
 }
 
 function groundTrackLabel(lat, lon) {
@@ -291,7 +392,17 @@ function updateMttOverlay() {
   }
 }
 
+function setLayerOnMap(map, layer, visible) {
+  if (!map || !layer) return;
+  if (visible) {
+    if (!map.hasLayer(layer)) layer.addTo(map);
+  } else if (map.hasLayer(layer)) {
+    map.removeLayer(layer);
+  }
+}
+
 function updateSatHighlight() {
+  if (!worldLeaflet) return;
   SATS2.forEach(function (sat) {
     var lyr = satLayers[sat.name];
     if (!lyr) return;
@@ -299,11 +410,32 @@ function updateSatHighlight() {
     if (lyr.marker.setIcon) {
       lyr.marker.setIcon(satIcon(sat.color, sel));
     }
-    lyr.trackLine.setStyle({ opacity: sel ? 1 : 0.35, weight: sel ? 3 : 2.2 });
-    lyr.prevTrack.setStyle({ opacity: sel ? 0.45 : 0.18 });
-    if (lyr.footprint) {
-      lyr.footprint.setStyle({ fillOpacity: sel ? 0.09 : 0.05 });
+    if (lyr.marker.setOpacity) lyr.marker.setOpacity(sel ? 1 : 0.35);
+    setLayerOnMap(worldLeaflet, lyr.trackLine, sel);
+    setLayerOnMap(worldLeaflet, lyr.prevTrack, sel);
+    if (sel) {
+      lyr.trackLine.setStyle({ opacity: 1, weight: 3 });
+      lyr.prevTrack.setStyle({ opacity: 0.45 });
     }
+    if (lyr.footprint) {
+      if (sel) {
+        setLayerOnMap(worldLeaflet, lyr.footprint, true);
+        lyr.footprint.setStyle({
+          fillOpacity: 0.16,
+          opacity: 0.85,
+          weight: 2,
+          dashArray: '6 4'
+        });
+        var pos = satPosition(lyr.sat);
+        if (pos) {
+          lyr.footprint.setLatLng([pos.lat, pos.lon]);
+          lyr.footprint.setRadius(footprintRadiusM(pos.alt_km));
+        }
+      } else {
+        setLayerOnMap(worldLeaflet, lyr.footprint, false);
+      }
+    }
+    if (!sel && lyr.marker.closePopup) lyr.marker.closePopup();
   });
 }
 
@@ -346,6 +478,10 @@ function selectSatellite(name) {
   document.querySelectorAll('.pt-row').forEach(function (r) {
     r.classList.toggle('sel', r.getAttribute('data-sat') === name);
   });
+  SATS2.forEach(function (sat) {
+    var lyr = satLayers[sat.name];
+    if (lyr && lyr.marker && lyr.marker.closePopup) lyr.marker.closePopup();
+  });
   var lyr = satLayers[name];
   if (lyr && worldLeaflet && activeTab === 2 && mapMode === 'map') {
     var pos = satPosition(lyr.sat);
@@ -358,12 +494,13 @@ function selectSatellite(name) {
     globeInstance.controls().autoRotateSpeed = 0.15;
     var sat = findSat(name);
     var pos = sat ? satPosition(sat, new Date()) : null;
-    if (pos && typeof globeInstance.pointOfView === 'function') {
+    if (pos && typeof globeInstance.pointOfView === 'function' && mapMode === 'globe') {
       globeInstance.pointOfView({ lat: pos.lat, lng: pos.lon, altitude: 2.1 }, 900);
     }
     refreshGlobeMarkers(true);
     updateGlobeTracks(true);
-    showOrbitSatInfo(true);
+    updateGlobeFootprint();
+    if (mapMode === 'globe') showOrbitSatInfo(true);
   }
 }
 
@@ -388,36 +525,35 @@ function setupWorldMapLayers() {
   configureLeafletAssets();
   whenMapContainerReady(container, function () {
     worldLeaflet = L.map(container, {
-      zoomControl: true, attributionControl: true, worldCopyJump: true, minZoom: 2, maxZoom: 10
-    }).setView([20, 80], 3);
+      zoomControl: true,
+      attributionControl: true,
+      worldCopyJump: true,
+      minZoom: 1,
+      maxZoom: 10,
+      maxBounds: [[-85, -180], [85, 180]]
+    }).setView([10, 0], 1);
     addReliableTiles(worldLeaflet, 'world');
     L.circleMarker([GS_LAT, GS_LON], { radius: 9, color: '#ff7c3a', fillColor: '#ff7c3a', fillOpacity: 0.95, weight: 2 })
       .addTo(worldLeaflet).bindPopup('<b>GS MUMBAI</b><br>Ground Station · Vidyajyoti');
     L.circle([GS_LAT, GS_LON], { radius: 800000, color: '#ff7c3a', fillColor: '#ff7c3a', fillOpacity: 0.04, weight: 1, dashArray: '6 4' }).addTo(worldLeaflet);
     var date = new Date();
     SATS2.forEach(function (sat) {
-      var prevTrack = L.polyline([], { color: sat.color, weight: 1, opacity: 0.28, dashArray: '4 8' }).addTo(worldLeaflet);
-      var trackLine = L.polyline([], { color: sat.color, weight: 2.2, opacity: 0.75, dashArray: '8 5' }).addTo(worldLeaflet);
-      var footprint = null;
-      if (sat.name !== 'VIDYAJYOTI') {
-        footprint = L.circle([0, 0], {
-          radius: footprintRadiusM(400),
-          color: sat.color,
-          fillColor: sat.color,
-          fillOpacity: 0.05,
-          weight: 1,
-          dashArray: '4 6'
-        }).addTo(worldLeaflet);
-      }
-      var marker = L.marker([GS_LAT, GS_LON], { icon: satIcon(sat.color, sat.name === selectedSatName) }).addTo(worldLeaflet);
+      var prevTrack = L.polyline([], { color: sat.color, weight: 1, opacity: 0.28, dashArray: '4 8' });
+      var trackLine = L.polyline([], { color: sat.color, weight: 2.2, opacity: 0.75, dashArray: '8 5' });
+      var footprint = L.circle([0, 0], {
+        radius: footprintRadiusM(400),
+        color: sat.color,
+        fillColor: sat.color,
+        fillOpacity: 0.16,
+        weight: 2,
+        dashArray: '6 4'
+      });
+      var marker = L.marker([GS_LAT, GS_LON], { icon: satIcon(sat.color, sat.name === selectedSatName), opacity: sat.name === selectedSatName ? 1 : 0.35 }).addTo(worldLeaflet);
       var startPos = satPosition(sat, date);
       if (startPos) marker.setLatLng([startPos.lat, startPos.lon]);
-      if (footprint && startPos) {
-        footprint.setLatLng([startPos.lat, startPos.lon]);
-        footprint.setRadius(footprintRadiusM(startPos.alt_km));
-      }
       marker.on('click', function () { selectSatellite(sat.name); });
       marker.bindPopup(function () {
+        if (sat.name !== selectedSatName) return '';
         return satPopupHtml(sat, satPosition(sat));
       });
       satLayers[sat.name] = { sat: sat, prevTrack: prevTrack, trackLine: trackLine, marker: marker, footprint: footprint };
@@ -444,7 +580,10 @@ async function refreshSatellitesFromApi() {
     if (typeof VjOrbit !== 'undefined') VjOrbit.initFromApi(sats);
     setOrbitBanner('', false);
     refreshGroundTracks(true);
-    if (globeInstance && globeReady) updateGlobeTracks(true);
+    if (globeInstance && globeReady) {
+      updateGlobeTracks(true);
+      updateGlobeFootprint();
+    }
   } catch (e) { /* keep bundled catalog */ }
 }
 
@@ -475,7 +614,7 @@ async function initWorldMap() {
         var pos = satPosition(sat, date);
         if (!pos) return;
         lyr.marker.setLatLng([pos.lat, pos.lon]);
-        if (lyr.footprint) {
+        if (lyr.footprint && sat.name === selectedSatName) {
           lyr.footprint.setLatLng([pos.lat, pos.lon]);
           lyr.footprint.setRadius(footprintRadiusM(pos.alt_km));
         }
@@ -485,6 +624,7 @@ async function initWorldMap() {
     }
     if (activeTab === 2 && mapMode === 'globe' && globeInstance) {
       refreshGlobeMarkers(false);
+      updateGlobeFootprint();
       updateMttOverlay();
       updateGlobeTracks(false);
     }
@@ -529,9 +669,10 @@ function initGlobe() {
         node.innerHTML = '<div class="globe-gs-dot" title="GS MUMBAI"></div>';
         node.title = 'GS MUMBAI';
       } else {
-        var sel = d.name === selectedSatName;
-        node.innerHTML = satMarkerHtml(d.color, sel, sel ? 36 : 30) +
-          (sel ? '<div class="globe-sat-label">' + d.name + '</div>' : '');
+        var sel = d.selected || d.name === selectedSatName;
+        node.innerHTML = satMarkerHtml(d.color, sel, sel ? 36 : 20);
+        if (sel) node.innerHTML += '<div class="globe-sat-label">' + d.name + '</div>';
+        if (!sel) node.style.opacity = '0.4';
         node.title = d.name;
         node.addEventListener('click', function (evt) {
           evt.preventDefault();
@@ -545,10 +686,16 @@ function initGlobe() {
     .pathPointLat(function (p) { return p[0]; })
     .pathPointLng(function (p) { return p[1]; })
     .pathPointAlt(function (p, i, path) {
-      return path && path.name === selectedSatName ? 0.04 : 0.025;
+      return path && path.name === selectedSatName ? 0.05 : 0.025;
     })
     .pathColor(function (d) { return d.color; })
-    .pathStroke(function (d) { return d.name === selectedSatName ? 0.55 : 0.35; })(wrap);
+    .pathStroke(function (d) { return d.name === selectedSatName ? 0.65 : 0.35; })
+    .polygonsData([])
+    .polygonGeoJsonGeometry(function (d) { return d.geometry; })
+    .polygonCapColor(function (d) { return d.capColor; })
+    .polygonSideColor(function () { return 'rgba(0,0,0,0)'; })
+    .polygonStrokeColor(function (d) { return d.strokeColor; })
+    .polygonAltitude(0.012)(wrap);
     globeInstance.controls().autoRotate = true;
     globeInstance.controls().autoRotateSpeed = 0.35;
     globeReady = true;
@@ -585,22 +732,22 @@ function splitPathAtDateline(coords) {
 function buildGlobeTracks(date) {
   var paths = [];
   if (typeof VjOrbit === 'undefined') return paths;
+  var sat = findSat(selectedSatName);
+  if (!sat) return paths;
 
-  SATS2.forEach(function (sat) {
-    var forward = sanitizeGlobePath(VjOrbit.buildGroundTrack(sat.name, date, 100));
-    var backward = sanitizeGlobePath(VjOrbit.buildPreviousTrack(sat.name, date, 50));
-    var fullTrack = backward.concat(forward.slice(1));
-    var segments = splitPathAtDateline(fullTrack);
-    segments.forEach(function (seg, idx) {
-      if (seg.length >= 2) {
-        paths.push({
-          name: sat.name,
-          color: sat.color,
-          coords: seg,
-          segment: idx
-        });
-      }
-    });
+  var forward = sanitizeGlobePath(VjOrbit.buildGroundTrack(sat.name, date, 100));
+  var backward = sanitizeGlobePath(VjOrbit.buildPreviousTrack(sat.name, date, 50));
+  var fullTrack = backward.concat(forward.slice(1));
+  var segments = splitPathAtDateline(fullTrack);
+  segments.forEach(function (seg, idx) {
+    if (seg.length >= 2) {
+      paths.push({
+        name: sat.name,
+        color: sat.color,
+        coords: seg,
+        segment: idx
+      });
+    }
   });
   return paths;
 }
@@ -623,12 +770,14 @@ function buildGlobeMarkers(date) {
   SATS2.forEach(function (sat) {
     var p = satPosition(sat, date);
     if (!p) return;
+    var sel = sat.name === selectedSatName;
     htmlMarkers.push({
       lat: p.lat,
       lng: p.lon,
       name: sat.name,
       color: sat.color,
-      kind: 'sat'
+      kind: 'sat',
+      selected: sel
     });
   });
   return htmlMarkers;
@@ -669,6 +818,7 @@ function updateGlobeData(forceTracks) {
   if (!globeInstance) return;
   updateGlobePoints(new Date());
   updateGlobeTracks(!!forceTracks);
+  updateGlobeFootprint();
 }
 
 function setMapMode(mode, btn) {
@@ -685,6 +835,7 @@ function setMapMode(mode, btn) {
       resizeGlobe();
       refreshGlobeMarkers(true);
       updateGlobeTracks(true);
+      updateGlobeFootprint();
       updateMttOverlay();
       showOrbitSatInfo(true);
     }, 80);
@@ -735,8 +886,8 @@ function initIndiaMap() {
     { n: 'Hyderabad', lon: 78.47, lat: 17.38, c: '#ff7c3a' }
   ];
   whenMapContainerReady(container, function () {
-    indiaLeaflet = L.map(container, { zoomControl: true, attributionControl: true, scrollWheelZoom: true, minZoom: 4, maxZoom: 8 })
-      .fitBounds([[6.5, 68], [35.5, 97.5]], { padding: [14, 14] });
+    indiaLeaflet = L.map(container, { zoomControl: true, attributionControl: true, scrollWheelZoom: true, minZoom: 3, maxZoom: 8 })
+      .fitBounds([[6.0, 67.5], [37.5, 97.5]], { padding: [10, 10] });
     addReliableTiles(indiaLeaflet, 'india');
     cities.forEach(function (ci) {
       var m = L.circleMarker([ci.lat, ci.lon], { radius: 8, color: ci.c, fillColor: ci.c, fillOpacity: 0.92, weight: 2 }).addTo(indiaLeaflet);
@@ -773,6 +924,25 @@ window.renderPassTable = function (rows) {
 
 var indiaMapReady = false;
 
+function initMapOverlayToggles() {
+  function bindToggle(btnId, panelId) {
+    var btn = el(btnId);
+    var panel = el(panelId);
+    if (!btn || !panel) return;
+    btn.addEventListener('click', function () {
+      var open = panel.classList.toggle('map-overlay-open');
+      btn.classList.toggle('active', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (panel.id === 'mtt') showOrbitSatInfo(true);
+      scheduleMapResize();
+    });
+  }
+  bindToggle('togglePolar', 'polarOverlay');
+  bindToggle('toggleSig', 'sigOverlay');
+  bindToggle('toggleMtt', 'mtt');
+}
+
 setTimeout(function () {
+  initMapOverlayToggles();
   if (typeof loadPasses === 'function') loadPasses();
 }, 200);
