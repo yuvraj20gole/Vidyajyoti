@@ -18,6 +18,10 @@ var orbitDataBanner = '';
 var trackRefreshAt = 0;
 var globeTrackRefreshAt = 0;
 var globePosRefreshAt = 0;
+var GLOBE_FP_ALT_FILL = 0.046;
+var GLOBE_FP_ALT_RING = 0.054;
+var globeTrackPathsCache = [];
+var globeFpMaterials = {};
 var lastGlobeMarkersSig = '';
 
 var FALLBACK_SATS = [
@@ -299,7 +303,51 @@ function circleRingCoords(lat, lon, radiusM, numPoints) {
   return ring;
 }
 
-function buildGlobeFootprint(date) {
+function hexToThreeColor(hex) {
+  var h = String(hex || '#4d9fff').replace('#', '');
+  if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
+  return parseInt(h, 16);
+}
+
+function circleRingCoordsLatLng(lat, lon, radiusM, numPoints) {
+  numPoints = numPoints || 80;
+  var earthR = 6378137;
+  var angular = radiusM / earthR;
+  var lat1 = lat * Math.PI / 180;
+  var lon1 = lon * Math.PI / 180;
+  var ring = [];
+  for (var i = 0; i <= numPoints; i++) {
+    var brng = (2 * Math.PI * i) / numPoints;
+    var lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(angular) +
+      Math.cos(lat1) * Math.sin(angular) * Math.cos(brng)
+    );
+    var lon2 = lon1 + Math.atan2(
+      Math.sin(brng) * Math.sin(angular) * Math.cos(lat1),
+      Math.cos(angular) - Math.sin(lat1) * Math.sin(lat2)
+    );
+    ring.push([lat2 * 180 / Math.PI, lon2 * 180 / Math.PI]);
+  }
+  return ring;
+}
+
+function globeFootprintMaterial(hex) {
+  if (typeof THREE === 'undefined') return null;
+  var key = hex || '#4d9fff';
+  if (!globeFpMaterials[key]) {
+    globeFpMaterials[key] = new THREE.MeshBasicMaterial({
+      color: hexToThreeColor(key),
+      transparent: true,
+      opacity: 0.11,
+      depthWrite: false,
+      depthTest: true,
+      side: THREE.DoubleSide
+    });
+  }
+  return globeFpMaterials[key];
+}
+
+function buildGlobeFootprintPolygons(date) {
   var sat = findSat(selectedSatName);
   if (!sat) return [];
   var pos = satPosition(sat, date || new Date());
@@ -312,14 +360,38 @@ function buildGlobeFootprint(date) {
       type: 'Polygon',
       coordinates: [circleRingCoords(pos.lat, pos.lon, radiusM)]
     },
-    capColor: satColorRgba(color, 0.24),
-    strokeColor: color
+    strokeColor: color,
+    alt: GLOBE_FP_ALT_FILL
   }];
+}
+
+function buildGlobeFootprintRing(date) {
+  var sat = findSat(selectedSatName);
+  if (!sat) return null;
+  var pos = satPosition(sat, date || new Date());
+  if (!pos) return null;
+  return {
+    name: sat.name,
+    color: sat.color || '#4d9fff',
+    coords: circleRingCoordsLatLng(pos.lat, pos.lon, footprintRadiusM(pos.alt_km)),
+    kind: 'footprint'
+  };
+}
+
+function applyGlobePaths(date) {
+  if (!globeInstance) return;
+  date = date || new Date();
+  var paths = globeTrackPathsCache.slice();
+  var ring = buildGlobeFootprintRing(date);
+  if (ring) paths.push(ring);
+  globeInstance.pathsData(paths);
 }
 
 function updateGlobeFootprint() {
   if (!globeInstance || !globeReady) return;
-  globeInstance.polygonsData(buildGlobeFootprint(new Date()));
+  var date = new Date();
+  globeInstance.polygonsData(buildGlobeFootprintPolygons(date));
+  applyGlobePaths(date);
 }
 
 function satPopupHtml(sat, pos) {
@@ -686,16 +758,24 @@ function initGlobe() {
     .pathPointLat(function (p) { return p[0]; })
     .pathPointLng(function (p) { return p[1]; })
     .pathPointAlt(function (p, i, path) {
-      return path && path.name === selectedSatName ? 0.05 : 0.025;
+      if (path && path.kind === 'footprint') return GLOBE_FP_ALT_RING;
+      return path && path.name === selectedSatName ? 0.058 : 0.028;
     })
-    .pathColor(function (d) { return d.color; })
-    .pathStroke(function (d) { return d.name === selectedSatName ? 0.65 : 0.35; })
+    .pathColor(function (d) {
+      if (d.kind === 'footprint') return d.color;
+      return d.color;
+    })
+    .pathStroke(function (d) {
+      if (d.kind === 'footprint') return 0.95;
+      return d.name === selectedSatName ? 0.65 : 0.35;
+    })
     .polygonsData([])
     .polygonGeoJsonGeometry(function (d) { return d.geometry; })
-    .polygonCapColor(function (d) { return d.capColor; })
+    .polygonAltitude(function (d) { return d.alt != null ? d.alt : GLOBE_FP_ALT_FILL; })
+    .polygonCapMaterial(function (d) { return globeFootprintMaterial(d.strokeColor); })
     .polygonSideColor(function () { return 'rgba(0,0,0,0)'; })
     .polygonStrokeColor(function (d) { return d.strokeColor; })
-    .polygonAltitude(0.012)(wrap);
+    .polygonCapCurvatureResolution(48)(wrap);
     globeInstance.controls().autoRotate = true;
     globeInstance.controls().autoRotateSpeed = 0.35;
     globeReady = true;
@@ -810,8 +890,9 @@ function updateGlobeTracks(force) {
   if (!globeInstance) return;
   var now = Date.now();
   if (!force && now - globeTrackRefreshAt < 45000) return;
-  globeInstance.pathsData(buildGlobeTracks(new Date()));
+  globeTrackPathsCache = buildGlobeTracks(new Date());
   globeTrackRefreshAt = now;
+  applyGlobePaths(new Date());
 }
 
 function updateGlobeData(forceTracks) {
