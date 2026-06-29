@@ -18,9 +18,8 @@ var orbitDataBanner = '';
 var trackRefreshAt = 0;
 var globeTrackRefreshAt = 0;
 var globePosRefreshAt = 0;
-var GLOBE_PATH_ALT = 0.022;
-var GLOBE_FP_ALT_FILL = 0.016;
-var GLOBE_FP_ALT_RING = 0.02;
+var GLOBE_PATH_ALT = 0.018;
+var GLOBE_FP_ALT = 0.014;
 var globeTrackPathsCache = [];
 var lastGlobeMarkersSig = '';
 
@@ -303,26 +302,11 @@ function circleRingCoords(lat, lon, radiusM, numPoints) {
   return ring;
 }
 
-function circleRingCoordsLatLng(lat, lon, radiusM, numPoints) {
-  numPoints = numPoints || 80;
-  var earthR = 6378137;
-  var angular = radiusM / earthR;
-  var lat1 = lat * Math.PI / 180;
-  var lon1 = lon * Math.PI / 180;
-  var ring = [];
-  for (var i = 0; i <= numPoints; i++) {
-    var brng = (2 * Math.PI * i) / numPoints;
-    var lat2 = Math.asin(
-      Math.sin(lat1) * Math.cos(angular) +
-      Math.cos(lat1) * Math.sin(angular) * Math.cos(brng)
-    );
-    var lon2 = lon1 + Math.atan2(
-      Math.sin(brng) * Math.sin(angular) * Math.cos(lat1),
-      Math.cos(angular) - Math.sin(lat1) * Math.sin(lat2)
-    );
-    ring.push([lat2 * 180 / Math.PI, lon2 * 180 / Math.PI]);
-  }
-  return ring;
+function pathCoordsWithAlt(coords, alt) {
+  alt = alt != null ? alt : GLOBE_PATH_ALT;
+  return coords.map(function (pt) {
+    return [pt[0], pt[1], alt];
+  });
 }
 
 function buildGlobeFootprintPolygons(date) {
@@ -339,49 +323,35 @@ function buildGlobeFootprintPolygons(date) {
       coordinates: [circleRingCoords(pos.lat, pos.lon, radiusM)]
     },
     strokeColor: color,
-    capColor: satColorRgba(color, 0.28)
+    capColor: satColorRgba(color, 0.32)
   }];
 }
 
-function buildGlobeFootprintRing(date) {
+function buildGlobeFootprintRings(date) {
   var sat = findSat(selectedSatName);
-  if (!sat) return null;
+  if (!sat) return [];
   var pos = satPosition(sat, date || new Date());
-  if (!pos) return null;
-  return {
-    name: sat.name,
+  if (!pos) return [];
+  var radiusDeg = (footprintRadiusM(pos.alt_km) / 6378137) * (180 / Math.PI);
+  return [{
+    lat: pos.lat,
+    lng: pos.lon,
+    maxR: radiusDeg,
     color: sat.color || '#4d9fff',
-    coords: circleRingCoordsLatLng(pos.lat, pos.lon, footprintRadiusM(pos.alt_km)),
-    kind: 'footprint',
-    pathAlt: GLOBE_FP_ALT_RING
-  };
+    propagationSpeed: 0
+  }];
 }
 
-function applyGlobePaths(date) {
-  if (!globeInstance) return;
-  date = date || new Date();
-  if (!globeTrackPathsCache.length) {
-    globeTrackPathsCache = buildGlobeTracks(date);
-  }
-  var paths = globeTrackPathsCache.slice();
-  var ring = buildGlobeFootprintRing(date);
-  if (ring) paths.push(ring);
-  globeInstance.pathsData(paths);
-}
-
-function refreshGlobeTrackCache(force) {
-  if (!globeInstance) return;
-  var now = Date.now();
-  if (!force && now - globeTrackRefreshAt < 45000) return;
-  globeTrackPathsCache = buildGlobeTracks(new Date());
-  globeTrackRefreshAt = now;
-}
-
-function updateGlobeFootprint() {
+function updateGlobeScene(forceTracks) {
   if (!globeInstance || !globeReady) return;
   var date = new Date();
+  if (forceTracks || !globeTrackPathsCache.length || (Date.now() - globeTrackRefreshAt > 45000)) {
+    globeTrackPathsCache = buildGlobeTracks(date);
+    globeTrackRefreshAt = Date.now();
+  }
+  globeInstance.pathsData(globeTrackPathsCache);
   globeInstance.polygonsData(buildGlobeFootprintPolygons(date));
-  applyGlobePaths(date);
+  globeInstance.ringsData(buildGlobeFootprintRings(date));
 }
 
 function satPopupHtml(sat, pos) {
@@ -561,8 +531,7 @@ function selectSatellite(name) {
     }
     globeTrackPathsCache = [];
     refreshGlobeMarkers(true);
-    updateGlobeTracks(true);
-    updateGlobeFootprint();
+    updateGlobeScene(true);
     if (mapMode === 'globe') showOrbitSatInfo(true);
   }
 }
@@ -644,8 +613,7 @@ async function refreshSatellitesFromApi() {
     setOrbitBanner('', false);
     refreshGroundTracks(true);
     if (globeInstance && globeReady) {
-      updateGlobeTracks(true);
-      updateGlobeFootprint();
+      updateGlobeScene(true);
     }
   } catch (e) { /* keep bundled catalog */ }
 }
@@ -687,8 +655,7 @@ async function initWorldMap() {
     }
     if (activeTab === 2 && mapMode === 'globe' && globeInstance) {
       refreshGlobeMarkers(false);
-      refreshGlobeTrackCache(false);
-      updateGlobeFootprint();
+      updateGlobeScene(false);
       updateMttOverlay();
     }
     requestAnimationFrame(tickOrbitMaps);
@@ -705,10 +672,14 @@ function resizeGlobe() {
 }
 
 function initGlobe() {
-  if (globeReady && globeInstance) return;
   if (typeof Globe === 'undefined') return;
   var wrap = el('globeWrap');
   if (!wrap) return;
+  if (globeReady && globeInstance) {
+    resizeGlobe();
+    updateGlobeScene(true);
+    return;
+  }
   try {
     globeInstance = Globe()
     .globeImageUrl(isLightMapTheme() ? GLOBE_IMG_LIGHT : GLOBE_IMG_DARK)
@@ -748,15 +719,21 @@ function initGlobe() {
     .pathPoints(function (d) { return d.coords; })
     .pathPointLat(function (p) { return p[0]; })
     .pathPointLng(function (p) { return p[1]; })
-    .pathPointAlt('pathAlt')
-    .pathColor(function (d) { return d.color; })
-    .pathStroke(function (d) {
-      if (d.kind === 'footprint') return 1;
-      return d.name === selectedSatName ? 0.75 : 0.35;
+    .pathPointAlt(function (p) {
+      return (Array.isArray(p) && p.length > 2 && isFinite(p[2])) ? p[2] : GLOBE_PATH_ALT;
     })
+    .pathColor(function (d) { return d.color; })
+    .ringsData([])
+    .ringLat('lat')
+    .ringLng('lng')
+    .ringMaxRadius('maxR')
+    .ringColor(function (d) { return d.color; })
+    .ringPropagationSpeed('propagationSpeed')
+    .ringAltitude(GLOBE_FP_ALT)
+    .ringRepeatPeriod(999999)
     .polygonsData([])
     .polygonGeoJsonGeometry(function (d) { return d.geometry; })
-    .polygonAltitude(GLOBE_FP_ALT_FILL)
+    .polygonAltitude(GLOBE_FP_ALT)
     .polygonCapColor(function (d) { return d.capColor; })
     .polygonSideColor(function () { return 'rgba(0,0,0,0)'; })
     .polygonStrokeColor(function (d) { return d.strokeColor; })(wrap);
@@ -808,10 +785,8 @@ function buildGlobeTracks(date) {
       paths.push({
         name: sat.name,
         color: sat.color,
-        coords: seg,
-        segment: idx,
-        kind: 'track',
-        pathAlt: GLOBE_PATH_ALT
+        coords: pathCoordsWithAlt(seg, GLOBE_PATH_ALT),
+        segment: idx
       });
     }
   });
@@ -868,21 +843,10 @@ function refreshGlobeMarkers(force) {
   globeInstance.pointsData([]);
 }
 
-function updateGlobePoints(date) {
-  refreshGlobeMarkers(true);
-}
-
-function updateGlobeTracks(force) {
-  if (!globeInstance) return;
-  refreshGlobeTrackCache(!!force);
-  applyGlobePaths(new Date());
-}
-
 function updateGlobeData(forceTracks) {
   if (!globeInstance) return;
-  updateGlobePoints(new Date());
-  updateGlobeTracks(!!forceTracks);
-  updateGlobeFootprint();
+  refreshGlobeMarkers(true);
+  updateGlobeScene(!!forceTracks);
 }
 
 function setMapMode(mode, btn) {
@@ -899,8 +863,7 @@ function setMapMode(mode, btn) {
       resizeGlobe();
       globeTrackPathsCache = [];
       refreshGlobeMarkers(true);
-      updateGlobeTracks(true);
-      updateGlobeFootprint();
+      updateGlobeScene(true);
       updateMttOverlay();
       showOrbitSatInfo(true);
     }, 80);
