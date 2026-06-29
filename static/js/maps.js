@@ -379,27 +379,6 @@ function buildGlobeFootprintRings(date) {
   }];
 }
 
-function buildGlobeArcs(date) {
-  var arcs = [];
-  if (typeof VjOrbit === 'undefined') return arcs;
-  var sat = findSat(selectedSatName);
-  if (!sat) return arcs;
-  var track = sanitizeGlobePath(VjOrbit.buildGroundTrack(sat.name, date || new Date(), 120));
-  for (var i = 0; i < track.length - 1; i += 3) {
-    var a = track[i];
-    var b = track[i + 1];
-    if (!a || !b) continue;
-    arcs.push({
-      startLat: a[0],
-      startLng: a[1],
-      endLat: b[0],
-      endLng: b[1],
-      color: sat.color || '#4d9fff'
-    });
-  }
-  return arcs;
-}
-
 function updateGlobeScene(forceTracks) {
   if (!globeInstance || !globeReady) return;
   var date = new Date();
@@ -410,7 +389,7 @@ function updateGlobeScene(forceTracks) {
   var paths = globeTrackPathsCache.slice();
   var fpPath = buildGlobeFootprintPath(date);
   if (fpPath) paths.push(fpPath);
-  globeInstance.arcsData(buildGlobeArcs(date));
+  globeInstance.arcsData([]);
   globeInstance.pathsData(paths);
   globeInstance.polygonsData(buildGlobeFootprintPolygons(date));
   globeInstance.ringsData(buildGlobeFootprintRings(date));
@@ -786,14 +765,6 @@ function initGlobe() {
     })
     .pathColor(function (d) { return d.color; })
     .pathTransitionDuration(0)
-    .arcsData([])
-    .arcStartLat(function (d) { return d.startLat; })
-    .arcStartLng(function (d) { return d.startLng; })
-    .arcEndLat(function (d) { return d.endLat; })
-    .arcEndLng(function (d) { return d.endLng; })
-    .arcColor(function (d) { return d.color; })
-    .arcAltitude(GLOBE_PATH_ALT)
-    .arcStroke(0.55)
     .ringsData([])
     .ringLat('lat')
     .ringLng('lng')
