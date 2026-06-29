@@ -18,9 +18,9 @@ var orbitDataBanner = '';
 var trackRefreshAt = 0;
 var globeTrackRefreshAt = 0;
 var globePosRefreshAt = 0;
-var GLOBE_PATH_ALT = 0.14;
-var GLOBE_FP_ALT = 0.10;
-var GLOBE_FP_RING_ALT = 0.105;
+var GLOBE_PATH_ALT = 0.05;
+var GLOBE_FP_ALT = 0.035;
+var GLOBE_FP_RING_ALT = 0.038;
 var globeTrackPathsCache = [];
 var lastGlobeMarkersSig = '';
 
@@ -807,8 +807,7 @@ function initGlobe() {
     .polygonAltitude(GLOBE_FP_ALT)
     .polygonCapColor(function (d) { return d.capColor; })
     .polygonSideColor(function () { return 'rgba(0,0,0,0)'; })
-    .polygonStrokeColor(function (d) { return d.strokeColor; })
-    .polygonTransitionDuration(0)(wrap);
+    .polygonStrokeColor(function (d) { return d.strokeColor; })(wrap);
     globeInstance.controls().autoRotate = true;
     globeInstance.controls().autoRotateSpeed = 0.35;
     globeReady = true;
