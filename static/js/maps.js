@@ -42,11 +42,13 @@ var SAT_META = {
   'HO-68': { code: 'XW-1 \u00b7 LEO \u00b7 CelesTrak', label: 'HO-68<br>XW-1', purpose: 'Amateur radio \u00b7 Hope Oscar' }
 };
 
-/* Satellite imagery base (no incorrect political borders) + Esri English labels on orbit map. */
-var ESRI_IMAGERY = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+/* Carto base (clean orbit-tracker look) + Esri English labels + India boundary overlay. */
+var CARTO_DARK_BASE = 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png';
+var CARTO_LIGHT_BASE = 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
+var CARTO_VOYAGER_BASE = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png';
 var EN_LABELS_DARK = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
 var EN_LABELS_LIGHT = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
-var MAP_TILE_ATTR = '&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Earthstar Geographics';
+var MAP_TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.esri.com/">Esri</a>';
 var INDIA_OUTLINE_URL = null;
 
 function indiaOutlineUrl() {
@@ -68,9 +70,10 @@ function isLightMapTheme() {
   return document.documentElement.getAttribute('data-theme') === 'light';
 }
 
-function imageryBaseOptions(minZoom) {
+function cartoBaseOptions(minZoom) {
   return {
     attribution: MAP_TILE_ATTR,
+    subdomains: 'abcd',
     maxZoom: 19,
     minZoom: minZoom || 1,
     keepBuffer: 2,
@@ -94,14 +97,29 @@ function englishLabelOptions() {
 }
 
 function createWorldOrbitMapLayers() {
+  if (isLightMapTheme()) {
+    return [
+      L.tileLayer(CARTO_LIGHT_BASE, cartoBaseOptions(1)),
+      L.tileLayer(EN_LABELS_LIGHT, englishLabelOptions())
+    ];
+  }
   return [
-    L.tileLayer(ESRI_IMAGERY, imageryBaseOptions(1)),
-    L.tileLayer(isLightMapTheme() ? EN_LABELS_LIGHT : EN_LABELS_DARK, englishLabelOptions())
+    L.tileLayer(CARTO_DARK_BASE, cartoBaseOptions(1)),
+    L.tileLayer(EN_LABELS_DARK, englishLabelOptions())
   ];
 }
 
 function createIndiaMapLayers() {
-  return [L.tileLayer(ESRI_IMAGERY, imageryBaseOptions(3))];
+  if (isLightMapTheme()) {
+    return [
+      L.tileLayer(CARTO_VOYAGER_BASE, cartoBaseOptions(3)),
+      L.tileLayer(EN_LABELS_LIGHT, englishLabelOptions())
+    ];
+  }
+  return [
+    L.tileLayer(CARTO_DARK_BASE, cartoBaseOptions(3)),
+    L.tileLayer(EN_LABELS_DARK, englishLabelOptions())
+  ];
 }
 
 function indiaBoundaryStyle() {
