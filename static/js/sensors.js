@@ -60,7 +60,6 @@ function applyTelemetry(data) {
   s('cloudVal', Math.round(D.cloud));
   s('rainVal', Math.round(D.rain));
   D.age = 0;
-  if (typeof setGaugeTarget === 'function') setGaugeTarget(D.hum);
   if (typeof updateDashStatCards === 'function') updateDashStatCards(window._telemetryHistory, D);
   if (typeof drawTempSparkline === 'function' && window._sparklineData) drawTempSparkline();
 }

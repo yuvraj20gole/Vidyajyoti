@@ -95,8 +95,8 @@ document.querySelectorAll('.tabn').forEach(function (btn) {
     }
     if (t === 2 && !worldMapReady) initWorldMap();
     if (t === 3 && !dashChartReady) initDashChart();
-    if (t === 2 && worldMapReady) scheduleMapResize();
-    if (t === 3 && indiaMapReady) scheduleMapResize();
+    if (t === 2 && worldMapReady) scheduleMapResize({ fitWorld: false });
+    if (t === 3 && indiaMapReady) scheduleMapResize({ fitWorld: false });
     if (t === 4 && typeof loadSettingsAccount === 'function') loadSettingsAccount();
   });
 });
@@ -107,6 +107,7 @@ function switchToTab(tabNum) {
 
 function focusSatellite(name) {
   if (!name) return;
+  if (typeof suppressWorldMapFit === 'function') suppressWorldMapFit(2500);
   switchToTab(2);
   setTimeout(function () {
     if (!worldMapReady && typeof initWorldMap === 'function') initWorldMap();
@@ -199,7 +200,7 @@ document.querySelectorAll('.sec-action[data-action]').forEach(function (btn) {
     var action = btn.getAttribute('data-action');
     if (action === 'signal-details') {
       switchToTab(3);
-      showVjToast('Signal quality reflects live humidity from Mumbai ground station.');
+      showVjToast('Signal quality is estimated from satellite elevation above Mumbai.');
       var gauge = el('gaugeCanvas');
       if (gauge) {
         gauge.classList.add('panel-flash');

@@ -708,6 +708,9 @@ window.loadDashClimateHistory = async function () {
   window.setSignalTarget = function (elDeg) {
     if (elDeg == null || isNaN(elDeg)) return;
     signalTarget = Math.max(5, Math.min(95, elDeg * 3.2));
+    if (typeof window.setGaugeTarget === 'function') {
+      window.setGaugeTarget(signalTarget);
+    }
   };
 
   function draw() {
@@ -851,7 +854,7 @@ function initDashChart() {
   c.height = 88;
   var ctx = c.getContext('2d');
   var val = 0;
-  var target = 78;
+  var target = 20;
   var cx = 90, cy = 82, R = 68;
   var tip = ensureChartTooltip();
 
@@ -876,7 +879,7 @@ function initDashChart() {
       tip.hidden = true;
       return;
     }
-    tip.innerHTML = '<b>Humidity</b><br>' + Math.round(val) + '%';
+    tip.innerHTML = '<b>Signal quality</b><br>' + Math.round(val) + '%';
     tip.hidden = false;
     var left = e.clientX + 14;
     if (left + 160 > window.innerWidth) left = e.clientX - 170;
@@ -886,10 +889,6 @@ function initDashChart() {
   c.addEventListener('mouseleave', function () { tip.hidden = true; });
 
   function draw() {
-    if (activeTab !== 3) {
-      requestAnimationFrame(draw);
-      return;
-    }
     val += (target - val) * 0.04;
     ctx.clearRect(0, 0, 180, 88);
 

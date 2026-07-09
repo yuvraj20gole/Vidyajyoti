@@ -121,6 +121,26 @@ window.VJ_SAT_ICON = "images/satellite.svg";
         <div style="flex:1;min-width:0;"><div class="sat-nm">FO-29</div><div class="sat-sub">FujiSat &middot; 887 km</div></div>
         <div class="sat-badge leo">LEO</div>
       </div>
+      <div class="sat-row au au7" data-sat="Cartosat-2F">
+        <div class="sat-ico eo-cyan">&#128247;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">Cartosat-2F</div><div class="sat-sub">ISRO &middot; 505 km</div></div>
+        <div class="sat-badge eo">EO</div>
+      </div>
+      <div class="sat-row au au8" data-sat="RISAT-2B">
+        <div class="sat-ico eo-org">&#128225;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">RISAT-2B</div><div class="sat-sub">ISRO &middot; 557 km</div></div>
+        <div class="sat-badge eo">EO</div>
+      </div>
+      <div class="sat-row au au9" data-sat="Sentinel-2A">
+        <div class="sat-ico eo-grn">&#127758;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">Sentinel-2A</div><div class="sat-sub">ESA &middot; 786 km</div></div>
+        <div class="sat-badge eo">EO</div>
+      </div>
+      <div class="sat-row au au10" data-sat="Resourcesat-2A">
+        <div class="sat-ico eo-pur">&#128301;</div>
+        <div style="flex:1;min-width:0;"><div class="sat-nm">Resourcesat-2A</div><div class="sat-sub">ISRO &middot; 817 km</div></div>
+        <div class="sat-badge eo">EO</div>
+      </div>
     </div>
   </div>
 
@@ -461,7 +481,18 @@ window.VJ_SAT_ICON = "images/satellite.svg";
         <div class="sic-m"><div><span class="sic-mv" id="rm-alt">412</span><span class="sic-mu">KM</span></div><div class="sic-ml">Altitude</div></div>
         <div class="sic-m"><div><span class="sic-mv" id="rm-vel">7.3</span><span class="sic-mu">km/s</span></div><div class="sic-ml">Velocity</div></div>
         <div class="sic-m"><div><span class="sic-mv" id="rm-per">92</span><span class="sic-mu">min</span></div><div class="sic-ml">Period</div></div>
-        <div class="sic-m"><div><span class="sic-mv">97.4</span><span class="sic-mu">deg</span></div><div class="sic-ml">Inclination</div></div>
+        <div class="sic-m"><div><span class="sic-mv" id="rm-inc">97.4</span><span class="sic-mu">deg</span></div><div class="sic-ml">Inclination</div></div>
+      </div>
+      <div class="sic-eo-badge" id="sic-eo-badge" hidden>Earth Observation</div>
+      <div class="eo-imagery-panel" id="eo-imagery-panel" hidden>
+        <div class="sec-hdr eo-imagery-hdr">Nadir Imagery <span class="eo-imagery-tag" id="eo-imagery-tag">Loading</span></div>
+        <button type="button" class="eo-imagery-frame" id="eo-imagery-frame" aria-label="Expand ground scene" disabled>
+          <div class="eo-imagery-loading" id="eo-imagery-loading">Loading ground scene…</div>
+          <img id="eo-imagery-img" class="eo-imagery-img" alt="Earth observation preview" hidden>
+          <span class="eo-imagery-expand-hint" id="eo-imagery-expand-hint" hidden>Click to enlarge</span>
+        </button>
+        <div class="eo-imagery-meta" id="eo-imagery-meta"></div>
+        <div class="eo-imagery-disclaimer" id="eo-imagery-disclaimer"></div>
       </div>
       <div style="margin-top:8px;padding:8px 10px;background:var(--glass);border:1px solid var(--b1);border-radius:6px;">
         <div style="font-family:var(--fm);font-size:.48rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Purpose</div>
@@ -502,13 +533,22 @@ window.VJ_SAT_ICON = "images/satellite.svg";
   </div>
 
 </div><!-- /app -->
+<div class="eo-imagery-modal" id="eo-imagery-modal" hidden>
+  <div class="eo-imagery-modal-backdrop" id="eo-imagery-modal-backdrop"></div>
+  <div class="eo-imagery-modal-box" role="dialog" aria-modal="true" aria-labelledby="eo-imagery-modal-title">
+    <button type="button" class="eo-imagery-modal-close" id="eo-imagery-modal-close" aria-label="Close">&times;</button>
+    <div class="eo-imagery-modal-title" id="eo-imagery-modal-title">Nadir ground scene</div>
+    <img id="eo-imagery-modal-img" class="eo-imagery-modal-img" alt="Expanded ground scene">
+    <div class="eo-imagery-modal-meta" id="eo-imagery-modal-meta"></div>
+  </div>
+</div>
 <div id="vjToast" class="vj-toast" hidden role="status" aria-live="polite"></div>
 <script src="vendor/satellite/satellite.min.js"></script>
-<script src="js/orbit-engine.js"></script>
-<script src="js/app.js?v=20260530b"></script>
+<script src="js/orbit-engine.js?v=20260708eo2"></script>
+<script src="js/app.js?v=20260709mappan"></script>
 <script src="js/sensors.js"></script>
-<script src="js/charts.js?v=20260621"></script>
-<script src="js/maps.js?v=20260530tiles"></script>
+<script src="js/charts.js?v=20260709signal"></script>
+<script src="js/maps.js?v=20260709no404img"></script>
 <script src="js/settings.js"></script>
 </body>
 </html>

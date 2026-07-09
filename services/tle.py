@@ -48,6 +48,30 @@ SATELLITE_CATALOG = [
         "color": "#00e5a0",
         "is_simulated": False,
     },
+    {
+        "name": "Cartosat-2F",
+        "norad_id": 43111,
+        "color": "#56d4ff",
+        "is_simulated": False,
+    },
+    {
+        "name": "RISAT-2B",
+        "norad_id": 44233,
+        "color": "#ff9933",
+        "is_simulated": False,
+    },
+    {
+        "name": "Sentinel-2A",
+        "norad_id": 40697,
+        "color": "#7dffb3",
+        "is_simulated": False,
+    },
+    {
+        "name": "Resourcesat-2A",
+        "norad_id": 41877,
+        "color": "#e879f9",
+        "is_simulated": False,
+    },
 ]
 
 _tle_cache: dict[int, tuple[float, dict[str, str] | None]] = {}

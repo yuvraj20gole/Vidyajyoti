@@ -25,6 +25,11 @@ class Config:
     @staticmethod
     def init_app(app):
         INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
-        if not app.debug and os.environ.get("FLASK_DEBUG", "0") in ("0", "false", "False"):
+        flask_debug = os.environ.get("FLASK_DEBUG", "1").lower() not in (
+            "0",
+            "false",
+            "no",
+        )
+        if not flask_debug:
             app.config["SESSION_COOKIE_SECURE"] = True
             app.config["REMEMBER_COOKIE_SECURE"] = True

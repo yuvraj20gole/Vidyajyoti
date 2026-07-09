@@ -1,5 +1,6 @@
 """Open-Meteo weather and air-quality integration."""
 
+import math
 import os
 import time
 from datetime import datetime
@@ -168,10 +169,58 @@ def _fetch_air_quality(lat: float, lon: float) -> dict:
         return {"current": {}}
 
 
+def _fallback_telemetry() -> dict:
+    return {
+        "temp": 31.4,
+        "hum": 78.0,
+        "pres": 1008,
+        "wind": 12.0,
+        "uv": 7.2,
+        "aqi": 142.0,
+        "aqi_label": "Moderate",
+        "dew": 26.0,
+        "vis": 10.0,
+        "cloud": 45.0,
+        "rain": 0.0,
+        "feels_like": 34.5,
+        "wx_cond": "Partly Cloudy",
+        "source": "Demo fallback",
+        "location": "Mumbai",
+    }
+
+
+def _fallback_history() -> dict:
+    now = datetime.now(IST)
+    labels = []
+    temps = []
+    hums = []
+    pres = []
+    for i in range(24):
+        hour = (now.hour - 23 + i) % 24
+        labels.append(f"{hour:02d}:00" if i < 23 else f"{now.strftime('%H:%M')} (Now)")
+        temps.append(round(28 + 3 * math.sin(i / 4), 1))
+        hums.append(round(70 + 8 * math.cos(i / 5), 1))
+        pres.append(round((i % 5) - 2, 1))
+    return {
+        "labels": labels,
+        "temp": temps,
+        "hum": hums,
+        "pressure": pres,
+        "source": "Demo fallback",
+        "location": "Mumbai",
+        "updated_at": now.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "window_start": None,
+        "window_end": None,
+    }
+
+
 def get_telemetry() -> dict:
     def fetch():
-        forecast = _fetch_forecast(WEATHER_LAT, WEATHER_LON)
-        aq = _fetch_air_quality(WEATHER_LAT, WEATHER_LON)
+        try:
+            forecast = _fetch_forecast(WEATHER_LAT, WEATHER_LON)
+            aq = _fetch_air_quality(WEATHER_LAT, WEATHER_LON)
+        except requests.RequestException:
+            return _fallback_telemetry()
         cur = forecast.get("current", {})
         aq_cur = aq.get("current", {})
         pm25 = aq_cur.get("pm2_5")
@@ -203,8 +252,11 @@ def get_telemetry() -> dict:
 
 def get_telemetry_history() -> dict:
     def fetch():
-        forecast = _fetch_forecast_history(WEATHER_LAT, WEATHER_LON)
-        return _build_history_payload(forecast.get("hourly", {}))
+        try:
+            forecast = _fetch_forecast_history(WEATHER_LAT, WEATHER_LON)
+            return _build_history_payload(forecast.get("hourly", {}))
+        except requests.RequestException:
+            return _fallback_history()
 
     return _cached("history", fetch)
 

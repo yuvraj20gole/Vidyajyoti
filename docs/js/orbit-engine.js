@@ -30,6 +30,26 @@ window.VjOrbit = (function () {
       name: 'HO-68', norad_id: 36122, color: '#00e5a0', is_simulated: false, status: 'active', tle_available: true,
       line1: '1 36122U 09072B   26168.92787475  .00000131  00000+0  46070-3 0  9998',
       line2: '2 36122 100.4030 122.7487 0006862 229.8560 130.1952 13.16439165793109'
+    },
+    {
+      name: 'Cartosat-2F', norad_id: 43111, color: '#56d4ff', is_simulated: false, status: 'active', tle_available: true,
+      line1: '1 43111U 18004A   26188.56064297  .00006056  00000+0  29061-3 0  9994',
+      line2: '2 43111  97.4776 247.9958 0002116 150.9562 209.1791 15.19238236470420'
+    },
+    {
+      name: 'RISAT-2B', norad_id: 44233, color: '#ff9933', is_simulated: false, status: 'active', tle_available: true,
+      line1: '1 44233U 19028A   26188.56445720  .00001724  00000+0  13595-3 0  9993',
+      line2: '2 44233  36.9962 233.2239 0005299 213.8538 146.1867 15.01777033390898'
+    },
+    {
+      name: 'Sentinel-2A', norad_id: 40697, color: '#7dffb3', is_simulated: false, status: 'active', tle_available: true,
+      line1: '1 40697U 15028A   26188.56433306  .00000170  00000+0  81634-4 0  9990',
+      line2: '2 40697  98.5673 263.1268 0001240  95.2843 264.8482 14.30821730576643'
+    },
+    {
+      name: 'Resourcesat-2A', norad_id: 41877, color: '#e879f9', is_simulated: false, status: 'active', tle_available: true,
+      line1: '1 41877U 16074A   26188.62244933  .00000331  00000+0  17095-3 0  9994',
+      line2: '2 41877  98.7516 261.9597 0002812  44.1412 315.9990 14.21608143497201'
     }
   ];
 

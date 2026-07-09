@@ -60,9 +60,80 @@ function applyTelemetry(data) {
   s('cloudVal', Math.round(D.cloud));
   s('rainVal', Math.round(D.rain));
   D.age = 0;
-  if (typeof setGaugeTarget === 'function') setGaugeTarget(D.hum);
   if (typeof updateDashStatCards === 'function') updateDashStatCards(window._telemetryHistory, D);
   if (typeof drawTempSparkline === 'function' && window._sparklineData) drawTempSparkline();
+}
+
+function formatIrState(ir) {
+  if (ir === 1 || ir === true || ir === '1') return 'Detected';
+  if (ir === 0 || ir === false || ir === '0') return 'Clear';
+  return '--';
+}
+
+function pickSensorNumber(data, keys) {
+  for (var i = 0; i < keys.length; i++) {
+    var v = data[keys[i]];
+    if (v != null && v !== '' && !isNaN(Number(v))) return Number(v);
+  }
+  return null;
+}
+
+function applyEsp32Sensor(data) {
+  var dot = el('esp32ConnDot');
+  var connLabel = el('esp32ConnLabel');
+  var ageLabel = el('esp32AgeLabel');
+  var empty = el('esp32EmptyState');
+  var grid = el('esp32MetricsGrid');
+  if (!dot || !empty || !grid) return;
+
+  function s(id, v) { var e = el(id); if (e) e.textContent = v; }
+
+  var connected = !!(data && data.connected);
+  var hasReading = !!(data && data.received_at != null);
+
+  dot.className = 'sdot ' + (connected ? 'g' : 'off');
+  if (connLabel) connLabel.textContent = connected ? 'Connected' : 'Offline';
+
+  if (!hasReading || !connected) {
+    if (ageLabel) ageLabel.textContent = 'No live sensor data yet';
+    empty.hidden = false;
+    grid.hidden = true;
+    return;
+  }
+
+  empty.hidden = true;
+  grid.hidden = false;
+
+  var temp = pickSensorNumber(data, ['temp', 'temperature', 'temperature_c']);
+  var hum = pickSensorNumber(data, ['hum', 'humidity', 'humidity_pct']);
+  var dist = pickSensorNumber(data, ['distance_cm', 'distance']);
+
+  s('esp32TempVal', temp != null ? temp.toFixed(1) : '--');
+  s('esp32HumVal', hum != null ? Math.round(hum) : '--');
+  s('esp32DistVal', dist != null ? dist.toFixed(1) : '--');
+  s('esp32IrVal', formatIrState(data.ir));
+
+  if (ageLabel) {
+    var age = data.age_seconds;
+    ageLabel.textContent = age != null
+      ? 'Last updated ' + (age < 1 ? '<1' : Math.round(age)) + 's ago'
+      : 'Last updated just now';
+  }
+}
+
+async function updateEsp32Sensor() {
+  if (!useApi) {
+    applyEsp32Sensor({ connected: false, received_at: null });
+    return;
+  }
+  try {
+    var res = await apiFetch('/api/sensor');
+    if (res && res.ok) {
+      applyEsp32Sensor(await res.json());
+      return;
+    }
+  } catch (e) { /* ignore */ }
+  applyEsp32Sensor({ connected: false, received_at: null });
 }
 
 function formatDoppler(dop) {
@@ -216,6 +287,7 @@ window.updatePassCountdown = function () {
 };
 
 setInterval(updateSensors, 60000);
+setInterval(updateEsp32Sensor, 3000);
 setInterval(updateOrbit, 3500);
 setInterval(loadPasses, 300000);
 setInterval(function () {
@@ -223,4 +295,5 @@ setInterval(function () {
 }, 1000);
 
 updateSensors();
+updateEsp32Sensor();
 updateOrbit();
