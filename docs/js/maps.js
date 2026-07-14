@@ -282,16 +282,12 @@ function whenMapContainerReady(container, cb) {
 
 function scheduleMapResize(opts) {
   opts = opts || {};
-  var fitWorld = opts.fitWorld !== false;
   var delays = opts.delays || [0, 150, 400];
-  delays.forEach(function (ms, index) {
+  delays.forEach(function (ms) {
     setTimeout(function () {
       if (worldLeaflet) {
+        // Only re-measure the container — do not rebounce zoom/pan after setView([20,0], 2).
         worldLeaflet.invalidateSize(true);
-        var isLast = index === delays.length - 1;
-        if (fitWorld && isLast && Date.now() > mapUserFocusUntil) {
-          fitWorldMapView(worldLeaflet);
-        }
       }
       if (indiaLeaflet) indiaLeaflet.invalidateSize(true);
       resizeGlobe();
@@ -344,7 +340,7 @@ function rebuildTrackGroup(group, coords, style) {
 function buildFlatGroundTrack(name, date) {
   if (typeof VjOrbit === 'undefined') return { forward: [], backward: [] };
   var forward = sanitizeGlobePath(VjOrbit.buildGroundTrack(name, date, 120));
-  var backward = sanitizeGlobePath(VjOrbit.buildPreviousTrack(name, date, 60));
+  var backward = sanitizeGlobePath(VjOrbit.buildPreviousTrack(name, date, 30));
   return { forward: forward, backward: backward };
 }
 
@@ -1062,10 +1058,16 @@ function refreshGroundTracks(force) {
     lyr.trackGroup.clearLayers();
     if (tracks.backward && tracks.backward.length > 1) {
       var bkStyle = trackLineStyle(sat.color, sel);
-      bkStyle.opacity = sel ? 0.45 : 0.2;
+      bkStyle.opacity = 0.15;
       bkStyle.dashArray = '4 8';
       splitPathAtDateline(tracks.backward).forEach(function (seg) {
-        if (seg.length >= 2) L.polyline(seg, bkStyle).addTo(lyr.trackGroup);
+        if (seg.length < 2) return;
+        var hasLargeJump = false;
+        for (var k = 1; k < seg.length; k++) {
+          if (Math.abs(seg[k][1] - seg[k - 1][1]) > 90) { hasLargeJump = true; break; }
+        }
+        if (hasLargeJump) return;
+        L.polyline(seg, bkStyle).addTo(lyr.trackGroup);
       });
     }
     if (tracks.forward && tracks.forward.length > 1) {
@@ -1429,7 +1431,7 @@ function setMapMode(mode, btn) {
     gw.style.display = 'none';
     wl.style.display = 'block';
     if (worldLeaflet) setTimeout(function () {
-      fitWorldMapView(worldLeaflet);
+      worldLeaflet.setView([20, 0], 2);
       refreshGroundTracks(true);
     }, 80);
   }
