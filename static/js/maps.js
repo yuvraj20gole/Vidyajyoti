@@ -594,18 +594,31 @@ function updateMttOverlay() {
   s('mttAlt', Math.round(pos.alt_km) + ' km');
   s('mttDop', satDopplerLabel(sat));
   s('sb-selected', sat.name);
-  s('sb-lat', Math.abs(pos.lat).toFixed(2) + deg + (pos.lat >= 0 ? 'N' : 'S'));
-  s('sb-lon', Math.abs(pos.lon).toFixed(2) + deg + (pos.lon >= 0 ? 'E' : 'W'));
-  s('sb-alt', pos.alt_km.toFixed(1) + ' km');
-  s('sb-vel', (pos.velocity || 0).toFixed(3) + ' km/s');
-  if (sat.is_simulated || sat.name === 'VIDYAJYOTI') {
-    s('sb-gt', groundTrackLabel(pos.lat, pos.lon));
-  } else if (isEoSatellite(sat.name)) {
-    var eoMeta = getSatMeta(sat.name);
-    s('sb-gt', 'Swath ~' + (eoMeta.swath_km || '?') + ' km · ' + (eoMeta.sensor || 'EO'));
+  // Live ESP32 GPS overrides the status-bar position fields when available.
+  if (typeof hasLiveGpsFix === 'function' && hasLiveGpsFix()) {
+    if (typeof syncOrbitTrackerGpsBar === 'function') syncOrbitTrackerGpsBar();
+  } else {
+    s('sb-lat', Math.abs(pos.lat).toFixed(2) + deg + (pos.lat >= 0 ? 'N' : 'S'));
+    s('sb-lon', Math.abs(pos.lon).toFixed(2) + deg + (pos.lon >= 0 ? 'E' : 'W'));
+    s('sb-alt', pos.alt_km.toFixed(1) + ' km');
+    s('sb-vel', (pos.velocity || 0).toFixed(3) + ' km/s');
+    if (sat.is_simulated || sat.name === 'VIDYAJYOTI') {
+      s('sb-gt', groundTrackLabel(pos.lat, pos.lon));
+    } else if (isEoSatellite(sat.name)) {
+      var eoMeta = getSatMeta(sat.name);
+      s('sb-gt', 'Swath ~' + (eoMeta.swath_km || '?') + ' km · ' + (eoMeta.sensor || 'EO'));
+    }
   }
   var simBadge = el('vjSimBadge');
-  if (simBadge) simBadge.hidden = !(sat.is_simulated || sat.name === 'VIDYAJYOTI');
+  if (simBadge) {
+    if (typeof hasLiveGpsFix === 'function' && hasLiveGpsFix()) {
+      simBadge.hidden = false;
+      simBadge.textContent = 'Live GPS';
+    } else {
+      simBadge.hidden = !(sat.is_simulated || sat.name === 'VIDYAJYOTI');
+      simBadge.textContent = 'Simulated telemetry';
+    }
+  }
   if (typeof window.updatePassCountdown === 'function') window.updatePassCountdown();
   if (typeof window.setPolarTarget === 'function') {
     window.setPolarTarget(angles.az, angles.el);

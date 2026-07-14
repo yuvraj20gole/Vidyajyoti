@@ -152,6 +152,7 @@ html[data-theme="light"] .cat-bw{background:rgba(29,78,216,0.12);}
 html[data-theme="light"] .cat-v{color:#1e293b;font-weight:700;}
 html[data-theme="light"] .cat-row-btn.cat-sel{background:rgba(29,78,216,0.14);border-color:rgba(29,78,216,0.35);}
 html[data-theme="light"] #signalBar{background:linear-gradient(90deg,#eef4ff,#e0e7ff);border-top-color:rgba(29,78,216,0.22);}
+html[data-theme="light"] .sb-gps-status{background:rgba(255,255,255,0.7);}
 html[data-theme="light"] .sb-val{color:#1d4ed8;font-weight:700;}
 html[data-theme="light"] #passTable{background:#e8f0fe;}
 html[data-theme="light"] .pt-header{background:linear-gradient(90deg,#dbeafe,#e0e7ff);color:#334155;}
@@ -401,6 +402,11 @@ html[data-theme="light"] .settings-success{background:rgba(5,150,105,.1);border-
 #signalBar{flex-shrink:0;background:var(--surface-elevated);border-top:1px solid var(--b1);min-height:36px;display:flex;align-items:center;flex-wrap:wrap;padding:6px 14px;gap:8px 16px;box-shadow:var(--shadow-sm);overflow-x:auto;}
 .sb-item{display:flex;align-items:center;gap:6px;font-family:var(--fm);font-size:.6rem;color:var(--dim);flex-shrink:0;white-space:nowrap;}
 .sb-val{color:var(--acc2);font-weight:500;}
+.sb-gps-status{padding:2px 8px;border-radius:999px;border:1px solid var(--b1);background:var(--glass);letter-spacing:.6px;text-transform:uppercase;}
+.sb-gps-status.lock{border-color:rgba(0,229,160,.35);color:var(--grn);}
+.sb-gps-status.searching{border-color:rgba(255,196,68,.35);color:var(--wrn);}
+.sb-gps-status.offline{border-color:var(--b1);color:var(--dim);}
+.sb-gps-status #sb-gps-label{font-weight:600;}
 
 /* Pass table */
 #passTable{flex-shrink:0;background:var(--surface-deep);border-top:1px solid var(--b1);overflow-x:auto;min-height:200px;max-height:220px;}

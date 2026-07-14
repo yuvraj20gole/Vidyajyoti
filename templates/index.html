@@ -17,7 +17,7 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=20260530c">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=20260714gps">
 <script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
 <script src="https://unpkg.com/globe.gl@2.32.1/dist/globe.gl.min.js"></script>
 </head>
@@ -332,6 +332,10 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
       <!-- Status bar -->
       <div id="signalBar">
         <div class="sb-item sb-selected-label">Selected: <span class="sb-val" id="sb-selected">VIDYAJYOTI</span></div>
+        <div class="sb-item sb-gps-status" id="sb-gps-status" title="ESP32 GPS status">
+          <div class="sdot off" id="sb-gps-dot" aria-hidden="true"></div>
+          <span id="sb-gps-label">NO SENSOR</span>
+        </div>
         <div class="sb-item" id="vjSimBadge">Simulated telemetry</div>
         <div class="sb-item">Lat <span class="sb-val" id="sb-lat">20.00&deg;N</span></div>
         <div class="sb-item">Lon <span class="sb-val" id="sb-lon">78.00&deg;E</span></div>
@@ -546,9 +550,9 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
 <script src="{{ url_for('static', filename='vendor/satellite/satellite.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/orbit-engine.js') }}?v=20260708eo2"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}?v=20260709mappan"></script>
-<script src="{{ url_for('static', filename='js/sensors.js') }}"></script>
+<script src="{{ url_for('static', filename='js/sensors.js') }}?v=20260714gps"></script>
 <script src="{{ url_for('static', filename='js/charts.js') }}?v=20260709signal"></script>
-<script src="{{ url_for('static', filename='js/maps.js') }}?v=20260709no404img"></script>
+<script src="{{ url_for('static', filename='js/maps.js') }}?v=20260714gps"></script>
 <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 </body>
 </html>

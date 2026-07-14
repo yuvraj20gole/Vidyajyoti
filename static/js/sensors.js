@@ -23,6 +23,89 @@ var OR = { lat: 20, lon: 78, alt: 412.6, vel: 7.662, dop: 3.12 };
 var GTS = ['Bay of Bengal', 'Tamil Nadu Coast', 'Indian Ocean', 'Arabian Sea', 'Bay of Bengal'];
 var gti = 0;
 
+/** Latest ESP32 GPS snapshot for Orbit Tracker status bar. */
+window.latestSensorGps = {
+  connected: false,
+  gps_fixed: false,
+  gps_lat: null,
+  gps_lon: null,
+  gps_alt: null,
+  gps_speed: null,
+  gps_sats: null
+};
+
+function hasLiveGpsFix() {
+  var g = window.latestSensorGps;
+  return !!(g && g.connected && g.gps_fixed && g.gps_lat != null && g.gps_lon != null);
+}
+
+function formatGpsCoord(value, posSuffix, negSuffix) {
+  if (value == null || isNaN(Number(value))) return '--';
+  var n = Number(value);
+  return Math.abs(n).toFixed(4) + '\u00b0' + (n >= 0 ? posSuffix : negSuffix);
+}
+
+function setGpsStatusIndicator(state) {
+  var wrap = el('sb-gps-status');
+  var dot = el('sb-gps-dot');
+  var label = el('sb-gps-label');
+  if (!wrap || !dot || !label) return;
+  wrap.classList.remove('lock', 'searching', 'offline');
+  if (state === 'lock') {
+    wrap.classList.add('lock');
+    dot.className = 'sdot g';
+    label.textContent = 'GPS LOCK';
+  } else if (state === 'searching') {
+    wrap.classList.add('searching');
+    dot.className = 'sdot w';
+    label.textContent = 'GPS SEARCHING';
+  } else {
+    wrap.classList.add('offline');
+    dot.className = 'sdot off';
+    label.textContent = 'NO SENSOR';
+  }
+}
+
+function syncOrbitTrackerGpsBar() {
+  var g = window.latestSensorGps || {};
+  var connected = !!g.connected;
+  var fixed = !!(g.gps_fixed && g.gps_lat != null && g.gps_lon != null);
+
+  if (!connected) {
+    setGpsStatusIndicator('offline');
+  } else if (fixed) {
+    setGpsStatusIndicator('lock');
+  } else {
+    setGpsStatusIndicator('searching');
+  }
+
+  var simBadge = el('vjSimBadge');
+  if (simBadge) {
+    if (fixed) {
+      simBadge.hidden = false;
+      simBadge.textContent = 'Live GPS';
+    } else {
+      // Maps overlay may still show simulated badge for Vidyajyoti; restore default label.
+      simBadge.textContent = 'Simulated telemetry';
+    }
+  }
+
+  if (!fixed) return;
+
+  function s(id, v) { var e = el(id); if (e) e.textContent = v; }
+  s('sb-lat', formatGpsCoord(g.gps_lat, 'N', 'S'));
+  s('sb-lon', formatGpsCoord(g.gps_lon, 'E', 'W'));
+  s('sb-alt', g.gps_alt != null && !isNaN(Number(g.gps_alt))
+    ? Number(g.gps_alt).toFixed(1) + ' m'
+    : '--');
+  s('sb-vel', g.gps_speed != null && !isNaN(Number(g.gps_speed))
+    ? Number(g.gps_speed).toFixed(1) + ' km/h'
+    : '--');
+  s('sb-gt', g.gps_sats != null
+    ? 'ESP32 GPS · ' + Math.round(Number(g.gps_sats)) + ' sats'
+    : 'ESP32 GPS');
+}
+
 function applyTelemetry(data) {
   D.temp = data.temp;
   D.hum = data.hum;
@@ -84,12 +167,25 @@ function applyEsp32Sensor(data) {
   var ageLabel = el('esp32AgeLabel');
   var empty = el('esp32EmptyState');
   var grid = el('esp32MetricsGrid');
-  if (!dot || !empty || !grid) return;
-
-  function s(id, v) { var e = el(id); if (e) e.textContent = v; }
 
   var connected = !!(data && data.connected);
   var hasReading = !!(data && data.received_at != null);
+  var gpsFixed = !!(data && (data.gps_fixed === true || data.gps_fixed === 1 || data.gps_fixed === '1'));
+
+  window.latestSensorGps = {
+    connected: connected,
+    gps_fixed: gpsFixed,
+    gps_lat: pickSensorNumber(data || {}, ['gps_lat', 'lat']),
+    gps_lon: pickSensorNumber(data || {}, ['gps_lon', 'lon', 'lng']),
+    gps_alt: pickSensorNumber(data || {}, ['gps_alt', 'altitude', 'alt']),
+    gps_speed: pickSensorNumber(data || {}, ['gps_speed', 'speed']),
+    gps_sats: pickSensorNumber(data || {}, ['gps_sats', 'sats', 'satellites'])
+  };
+  syncOrbitTrackerGpsBar();
+
+  if (!dot || !empty || !grid) return;
+
+  function s(id, v) { var e = el(id); if (e) e.textContent = v; }
 
   dot.className = 'sdot ' + (connected ? 'g' : 'off');
   if (connLabel) connLabel.textContent = connected ? 'Connected' : 'Offline';
@@ -150,11 +246,16 @@ function applyOrbit(data) {
   OR.dop = data.dop;
   var deg = '\u00b0';
   function s2(id, v) { var e = el(id); if (e) e.textContent = v; }
-  s2('sb-lat', Math.abs(OR.lat).toFixed(2) + deg + (OR.lat >= 0 ? 'N' : 'S'));
-  s2('sb-lon', Math.abs(OR.lon).toFixed(2) + deg + (OR.lon >= 0 ? 'E' : 'W'));
-  s2('sb-alt', OR.alt.toFixed(1) + ' km');
-  s2('sb-vel', OR.vel.toFixed(3) + ' km/s');
-  s2('sb-gt', data.ground_track || GTS[gti]);
+  // Prefer live ESP32 GPS on the Orbit Tracker bar when a fix is available.
+  if (typeof hasLiveGpsFix === 'function' && hasLiveGpsFix()) {
+    syncOrbitTrackerGpsBar();
+  } else {
+    s2('sb-lat', Math.abs(OR.lat).toFixed(2) + deg + (OR.lat >= 0 ? 'N' : 'S'));
+    s2('sb-lon', Math.abs(OR.lon).toFixed(2) + deg + (OR.lon >= 0 ? 'E' : 'W'));
+    s2('sb-alt', OR.alt.toFixed(1) + ' km');
+    s2('sb-vel', OR.vel.toFixed(3) + ' km/s');
+    s2('sb-gt', data.ground_track || GTS[gti]);
+  }
   s2('rm-alt', Math.round(OR.alt));
   s2('rm-vel', OR.vel.toFixed(1));
   if (typeof selectedSatName !== 'undefined' && selectedSatName === 'VIDYAJYOTI' && typeof updateMttOverlay === 'function') {
