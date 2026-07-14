@@ -342,10 +342,10 @@ function rebuildTrackGroup(group, coords, style) {
 }
 
 function buildFlatGroundTrack(name, date) {
-  if (typeof VjOrbit === 'undefined') return [];
+  if (typeof VjOrbit === 'undefined') return { forward: [], backward: [] };
   var forward = sanitizeGlobePath(VjOrbit.buildGroundTrack(name, date, 120));
   var backward = sanitizeGlobePath(VjOrbit.buildPreviousTrack(name, date, 60));
-  return backward.concat(forward.slice(1));
+  return { forward: forward, backward: backward };
 }
 
 window.refreshMapTheme = function () {
@@ -1058,8 +1058,22 @@ function refreshGroundTracks(force) {
     var lyr = satLayers[sat.name];
     if (!lyr || typeof VjOrbit === 'undefined') return;
     var sel = sat.name === selectedSatName;
-    var coords = buildFlatGroundTrack(sat.name, date);
-    rebuildTrackGroup(lyr.trackGroup, coords, trackLineStyle(sat.color, sel));
+    var tracks = buildFlatGroundTrack(sat.name, date);
+    lyr.trackGroup.clearLayers();
+    if (tracks.backward && tracks.backward.length > 1) {
+      var bkStyle = trackLineStyle(sat.color, sel);
+      bkStyle.opacity = sel ? 0.45 : 0.2;
+      bkStyle.dashArray = '4 8';
+      splitPathAtDateline(tracks.backward).forEach(function (seg) {
+        if (seg.length >= 2) L.polyline(seg, bkStyle).addTo(lyr.trackGroup);
+      });
+    }
+    if (tracks.forward && tracks.forward.length > 1) {
+      var fwStyle = trackLineStyle(sat.color, sel);
+      splitPathAtDateline(tracks.forward).forEach(function (seg) {
+        if (seg.length >= 2) L.polyline(seg, fwStyle).addTo(lyr.trackGroup);
+      });
+    }
   });
 }
 
