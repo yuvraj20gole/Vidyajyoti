@@ -314,12 +314,8 @@ function focusFlatMapOnSatellite(lat, lon, marker) {
 
 function fitWorldMapView(map) {
   if (!map) return;
-  map.fitBounds(WORLD_BOUNDS, { animate: false, padding: [0, 0] });
-  var minZ = map.getBoundsZoom(WORLD_BOUNDS, true);
-  if (isFinite(minZ)) {
-    map.setMinZoom(minZ);
-    if (map.getZoom() < minZ) map.setZoom(minZ);
-  }
+  // Keep a full-world overview (poles visible); do not clamp/fit to a tight bbox.
+  map.setView([20, 0], 2, { animate: false });
 }
 
 function trackLineStyle(color, selected) {
@@ -333,18 +329,15 @@ function trackLineStyle(color, selected) {
   };
 }
 
-function rebuildTrackGroup(group, coords, style, wrapWorld) {
+function rebuildTrackGroup(group, coords, style) {
   if (!group) return;
   group.clearLayers();
   if (!coords || !coords.length) return;
+  // One polyline per antimeridian-safe segment (no world-wrap copies / diagonal joins).
   var segments = splitPathAtDateline(coords);
-  var offsets = wrapWorld ? [-360, 0, 360] : [0];
-  offsets.forEach(function (off) {
-    segments.forEach(function (seg) {
-      if (seg.length < 2) return;
-      var pts = seg.map(function (pt) { return [pt[0], pt[1] + off]; });
-      L.polyline(pts, style).addTo(group);
-    });
+  segments.forEach(function (seg) {
+    if (seg.length < 2) return;
+    L.polyline(seg, style).addTo(group);
   });
 }
 
@@ -1066,7 +1059,7 @@ function refreshGroundTracks(force) {
     if (!lyr || typeof VjOrbit === 'undefined') return;
     var sel = sat.name === selectedSatName;
     var coords = buildFlatGroundTrack(sat.name, date);
-    rebuildTrackGroup(lyr.trackGroup, coords, trackLineStyle(sat.color, sel), sel);
+    rebuildTrackGroup(lyr.trackGroup, coords, trackLineStyle(sat.color, sel));
   });
 }
 
@@ -1130,12 +1123,10 @@ function setupWorldMapLayers() {
       attributionControl: true,
       worldCopyJump: true,
       minZoom: 1,
-      maxZoom: 10,
-      maxBounds: WORLD_BOUNDS,
-      maxBoundsViscosity: 0.85
+      maxZoom: 10
     });
     addReliableTiles(worldLeaflet, 'world');
-    fitWorldMapView(worldLeaflet);
+    worldLeaflet.setView([20, 0], 2);
     L.circleMarker([GS_LAT, GS_LON], { radius: 9, color: '#ff7c3a', fillColor: '#ff7c3a', fillOpacity: 0.95, weight: 2 })
       .addTo(worldLeaflet).bindPopup('<b>GS MUMBAI</b><br>Ground Station · Vidyajyoti');
     L.circle([GS_LAT, GS_LON], { radius: 800000, color: '#ff7c3a', fillColor: '#ff7c3a', fillOpacity: 0.04, weight: 1, dashArray: '6 4' }).addTo(worldLeaflet);
@@ -1309,21 +1300,12 @@ function splitPathAtDateline(coords) {
   for (var i = 0; i < coords.length; i++) {
     var pt = coords[i];
     if (!pt || pt.length < 2 || !isFinite(pt[0]) || !isFinite(pt[1])) continue;
+    // Hard break on antimeridian wraps so Leaflet never draws a diagonal across the map.
     if (current.length) {
       var prev = current[current.length - 1];
-      var dLon = pt[1] - prev[1];
-      if (Math.abs(dLon) > 180) {
-        var nextLon = pt[1];
-        if (dLon > 180) nextLon -= 360;
-        if (dLon < -180) nextLon += 360;
-        var edgeLon = nextLon > prev[1] ? 180 : -180;
-        var span = nextLon - prev[1];
-        var frac = span ? (edgeLon - prev[1]) / span : 0.5;
-        var latCross = prev[0] + frac * (pt[0] - prev[0]);
-        current.push([latCross, edgeLon]);
-        if (current.length >= 2) segments.push(current.slice());
-        current = [[latCross, edgeLon === 180 ? -180 : 180], [pt[0], pt[1]]];
-        continue;
+      if (Math.abs(pt[1] - prev[1]) > 180) {
+        if (current.length >= 2) segments.push(current);
+        current = [];
       }
     }
     current.push([pt[0], pt[1]]);
