@@ -325,15 +325,42 @@ function trackLineStyle(color, selected) {
   };
 }
 
+function addWrappedPolyline(group, seg, style) {
+  if (!group || !seg || seg.length < 2) return;
+  // Draw at -360 / 0 / +360 so tracks wrap with Leaflet's continuous world tiles.
+  [-360, 0, 360].forEach(function (lonOffset) {
+    var shifted = seg.map(function (pt) {
+      return [pt[0], pt[1] + lonOffset];
+    });
+    L.polyline(shifted, style).addTo(group);
+  });
+}
+
 function rebuildTrackGroup(group, coords, style) {
   if (!group) return;
   group.clearLayers();
   if (!coords || !coords.length) return;
-  // One polyline per antimeridian-safe segment (no world-wrap copies / diagonal joins).
   var segments = splitPathAtDateline(coords);
   segments.forEach(function (seg) {
     if (seg.length < 2) return;
-    L.polyline(seg, style).addTo(group);
+    addWrappedPolyline(group, seg, style);
+  });
+}
+
+function setWrappedFootprint(lyr, lat, lon, radiusM) {
+  if (!lyr || !lyr.footprintCircles) return;
+  [-360, 0, 360].forEach(function (lonOffset, i) {
+    var circle = lyr.footprintCircles[i];
+    if (!circle) return;
+    circle.setLatLng([lat, lon + lonOffset]);
+    if (radiusM != null) circle.setRadius(radiusM);
+  });
+}
+
+function setWrappedFootprintStyle(lyr, style) {
+  if (!lyr || !lyr.footprintCircles) return;
+  lyr.footprintCircles.forEach(function (circle) {
+    if (circle && circle.setStyle) circle.setStyle(style);
   });
 }
 
@@ -653,7 +680,7 @@ function updateSatHighlight() {
       var visible = sel || isEo;
       setLayerOnMap(worldLeaflet, lyr.footprint, visible);
       if (visible) {
-        lyr.footprint.setStyle({
+        setWrappedFootprintStyle(lyr, {
           fillOpacity: isEo ? (sel ? 0.12 : 0.05) : (sel ? 0.16 : 0.0),
           opacity: isEo ? (sel ? 0.9 : 0.35) : (sel ? 0.85 : 0.0),
           weight: isEo ? (sel ? 2.6 : 1.6) : (sel ? 2 : 0.0),
@@ -661,8 +688,7 @@ function updateSatHighlight() {
         });
         var pos = satPosition(lyr.sat);
         if (pos) {
-          lyr.footprint.setLatLng([pos.lat, pos.lon]);
-          lyr.footprint.setRadius(footprintRadiusForSat(lyr.sat, pos.alt_km));
+          setWrappedFootprint(lyr, pos.lat, pos.lon, footprintRadiusForSat(lyr.sat, pos.alt_km));
         }
       }
     }
@@ -1067,13 +1093,13 @@ function refreshGroundTracks(force) {
           if (Math.abs(seg[k][1] - seg[k - 1][1]) > 90) { hasLargeJump = true; break; }
         }
         if (hasLargeJump) return;
-        L.polyline(seg, bkStyle).addTo(lyr.trackGroup);
+        addWrappedPolyline(lyr.trackGroup, seg, bkStyle);
       });
     }
     if (tracks.forward && tracks.forward.length > 1) {
       var fwStyle = trackLineStyle(sat.color, sel);
       splitPathAtDateline(tracks.forward).forEach(function (seg) {
-        if (seg.length >= 2) L.polyline(seg, fwStyle).addTo(lyr.trackGroup);
+        if (seg.length >= 2) addWrappedPolyline(lyr.trackGroup, seg, fwStyle);
       });
     }
   });
@@ -1083,13 +1109,19 @@ function createFlatSatLayer(sat, date) {
   var isEo = isEoSatellite(sat.name);
   var sel = sat.name === selectedSatName;
   var trackGroup = L.layerGroup();
-  var footprint = L.circle([0, 0], {
+  var footprintStyle = {
     radius: footprintRadiusForSat(sat, 400),
     color: sat.color,
     fillColor: sat.color,
     fillOpacity: isEo ? 0.1 : 0.16,
     weight: isEo ? 2.5 : 2,
     dashArray: isEo ? '10 6' : '6 4'
+  };
+  var footprint = L.layerGroup();
+  var footprintCircles = [-360, 0, 360].map(function (lonOffset) {
+    var circle = L.circle([0, lonOffset], footprintStyle);
+    circle.addTo(footprint);
+    return circle;
   });
   var marker = L.marker([GS_LAT, GS_LON], {
     icon: satIcon(sat.color, sel, sat.name),
@@ -1097,7 +1129,10 @@ function createFlatSatLayer(sat, date) {
   });
   if (worldLeaflet) marker.addTo(worldLeaflet);
   var startPos = satPosition(sat, date);
-  if (startPos) marker.setLatLng([startPos.lat, startPos.lon]);
+  if (startPos) {
+    marker.setLatLng([startPos.lat, startPos.lon]);
+    setWrappedFootprint({ footprintCircles: footprintCircles }, startPos.lat, startPos.lon, footprintRadiusForSat(sat, startPos.alt_km));
+  }
   marker.on('click', function (e) {
     if (e && e.originalEvent) L.DomEvent.stopPropagation(e);
     selectSatellite(sat.name);
@@ -1112,7 +1147,8 @@ function createFlatSatLayer(sat, date) {
     trackGroup: trackGroup,
     trackLine: trackGroup,
     marker: marker,
-    footprint: footprint
+    footprint: footprint,
+    footprintCircles: footprintCircles
   };
 }
 
@@ -1204,8 +1240,7 @@ async function initWorldMap() {
         if (!pos) return;
         lyr.marker.setLatLng([pos.lat, pos.lon]);
         if (lyr.footprint && (sat.name === selectedSatName || isEoSatellite(sat.name))) {
-          lyr.footprint.setLatLng([pos.lat, pos.lon]);
-          lyr.footprint.setRadius(footprintRadiusForSat(lyr.sat, pos.alt_km));
+          setWrappedFootprint(lyr, pos.lat, pos.lon, footprintRadiusForSat(lyr.sat, pos.alt_km));
         }
       });
       updateMttOverlay();
