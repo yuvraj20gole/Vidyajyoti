@@ -3,12 +3,16 @@
 import time
 
 _latest_reading: dict = {
+    "temperature": None,
+    "humidity": None,
     "distance_cm": None,
-    "pir": None,
     "ir": None,
-    "ldr": None,
-    "aqi_raw": None,
-    "aqi_estimate": None,
+    "gps_lat": None,
+    "gps_lon": None,
+    "gps_alt": None,
+    "gps_speed": None,
+    "gps_sats": None,
+    "gps_fixed": False,
     "received_at": None,
     "connected": False,
 }
