@@ -282,18 +282,238 @@ function whenMapContainerReady(container, cb) {
 
 function scheduleMapResize(opts) {
   opts = opts || {};
-  var delays = opts.delays || [0, 150, 400];
+  var delays = opts.delays || [0, 50, 150, 400, 800];
   delays.forEach(function (ms) {
     setTimeout(function () {
       if (worldLeaflet) {
-        // Only re-measure the container — do not rebounce zoom/pan after setView([20,0], 2).
         worldLeaflet.invalidateSize(true);
+        if (Date.now() > mapUserFocusUntil && activeTab === 2 && mapMode === 'map') {
+          fitWorldMapView(worldLeaflet);
+        }
       }
       if (indiaLeaflet) indiaLeaflet.invalidateSize(true);
       resizeGlobe();
     }, ms);
   });
 }
+
+function notifyMapLayoutChange() {
+  scheduleMapResize({ delays: [0, 50, 150, 400, 800, 1200] });
+}
+
+var orbitMapExpanded = false;
+var eoMapWidgetVisible = false;
+var eoMapImageryExpanded = false;
+var mapStageResizeObserver = null;
+
+function setOrbitPanelCollapsed(side, collapsed) {
+  var app = el('app');
+  if (!app) return;
+  var cls = side === 'left' ? 'orbit-lpanel-collapsed' : side === 'right' ? 'orbit-rpanel-collapsed' : 'orbit-bottom-collapsed';
+  app.classList.toggle(cls, collapsed);
+  document.body.classList.toggle(cls, collapsed);
+  var btnId = side === 'left' ? 'toggleOrbitLpanel' : side === 'right' ? 'toggleOrbitRpanel' : 'toggleOrbitBottom';
+  var btn = el(btnId);
+  if (btn) btn.setAttribute('aria-pressed', collapsed ? 'false' : 'true');
+  notifyMapLayoutChange();
+}
+
+function setOrbitMapExpanded(expanded) {
+  orbitMapExpanded = expanded;
+  document.body.classList.toggle('orbit-map-expanded', expanded);
+  var btn = el('toggleMapExpand');
+  if (btn) {
+    btn.classList.toggle('active', expanded);
+    btn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
+    btn.textContent = expanded ? 'Exit expand' : 'Expand map';
+  }
+  if (!expanded) {
+    setEoMapWidgetVisible(false);
+    setEoMapImageryExpanded(false);
+  } else {
+    maybeAutoShowEoMapImagery();
+  }
+  updateOrbitLayoutControls();
+  notifyMapLayoutChange();
+}
+
+function maybeAutoShowEoMapImagery() {
+  if (orbitMapExpanded && isEoSatellite(selectedSatName)) {
+    setEoMapWidgetVisible(true);
+    setEoMapImageryExpanded(false);
+  }
+}
+
+function setEoMapWidgetVisible(visible) {
+  eoMapWidgetVisible = visible;
+  var btn = el('toggleEoMapView');
+  if (btn) {
+    btn.classList.toggle('active', visible);
+    btn.setAttribute('aria-pressed', visible ? 'true' : 'false');
+  }
+  syncEoMapImageryUI();
+}
+
+function setEoMapImageryExpanded(expanded) {
+  eoMapImageryExpanded = expanded;
+  syncEoMapImageryUI();
+}
+
+function shouldShowEoMapImagery() {
+  return orbitMapExpanded && isEoSatellite(selectedSatName);
+}
+
+function setEoMapWidgetTag(state) {
+  var tag = el('eoMapWidgetTag');
+  if (!tag) return;
+  tag.classList.remove('is-loading', 'is-error');
+  if (state === 'loading') {
+    tag.textContent = 'Loading';
+    tag.classList.add('is-loading');
+  } else if (state === 'ready') {
+    tag.textContent = 'Scene ready';
+  } else if (state === 'error') {
+    tag.textContent = 'No feed';
+    tag.classList.add('is-error');
+  } else {
+    tag.textContent = 'EO feed';
+  }
+}
+
+function syncEoMapImageryUI() {
+  syncEoMapWidget();
+  syncEoMapOverlayFull();
+}
+
+function syncEoMapWidget() {
+  var widget = el('eoMapWidget');
+  var frame = el('eoMapWidgetFrame');
+  var img = el('eoMapWidgetImg');
+  var loadingEl = el('eoMapWidgetLoading');
+  var meta = el('eoMapWidgetMeta');
+  var hint = el('eoMapWidgetHint');
+  if (!widget) return;
+  if (!shouldShowEoMapImagery() || !eoMapWidgetVisible) {
+    widget.hidden = true;
+    return;
+  }
+  widget.hidden = false;
+  var hasImage = !!(eoImageryBlobUrl && img);
+  if (loadingEl) loadingEl.hidden = hasImage;
+  if (img) {
+    img.hidden = !hasImage;
+    if (hasImage) img.src = eoImageryBlobUrl;
+  }
+  if (frame) frame.disabled = !hasImage;
+  if (hint) hint.hidden = !hasImage;
+  if (meta) {
+    if (eoImageryLastData) renderEoImageryMeta(meta, eoImageryLastData);
+    else if (!hasImage) {
+      meta.innerHTML = '<div class="eo-meta-row"><span class="eo-meta-label">Status</span>' +
+        '<span class="eo-meta-value">Fetching scene near nadir…</span></div>';
+    }
+  }
+}
+
+function syncEoMapOverlayFull() {
+  var overlay = el('eoMapOverlay');
+  var img = el('eoMapOverlayImg');
+  var meta = el('eoMapOverlayMeta');
+  var title = el('eoMapOverlayTitle');
+  var loadingEl = el('eoMapOverlayLoading');
+  if (!overlay) return;
+  if (!shouldShowEoMapImagery() || !eoMapImageryExpanded) {
+    overlay.hidden = true;
+    return;
+  }
+  overlay.hidden = false;
+  var satLabel = (eoImageryLastData && eoImageryLastData.satellite) || selectedSatName;
+  if (title) title.textContent = satLabel + ' — nadir ground scene';
+  var hasImage = !!(eoImageryBlobUrl && img);
+  if (loadingEl) loadingEl.hidden = hasImage;
+  if (img) {
+    img.hidden = !hasImage;
+    if (hasImage) img.src = eoImageryBlobUrl;
+  }
+  if (meta) {
+    if (eoImageryLastData) renderEoImageryMeta(meta, eoImageryLastData);
+    else if (!hasImage) {
+      meta.innerHTML = '<div class="eo-meta-row"><span class="eo-meta-label">Status</span>' +
+        '<span class="eo-meta-value">Fetching scene near nadir…</span></div>';
+    }
+  }
+}
+
+function initOrbitPresentationUI() {
+  function bindPanelToggle(btnId, side) {
+    var btn = el(btnId);
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      var visible = btn.getAttribute('aria-pressed') !== 'false';
+      setOrbitPanelCollapsed(side, visible);
+    });
+  }
+  bindPanelToggle('toggleOrbitLpanel', 'left');
+  bindPanelToggle('toggleOrbitRpanel', 'right');
+  bindPanelToggle('toggleOrbitBottom', 'bottom');
+
+  var expandBtn = el('toggleMapExpand');
+  if (expandBtn) {
+    expandBtn.addEventListener('click', function () {
+      setOrbitMapExpanded(!orbitMapExpanded);
+    });
+  }
+  var eoBtn = el('toggleEoMapView');
+  if (eoBtn) {
+    eoBtn.addEventListener('click', function () {
+      setEoMapWidgetVisible(!eoMapWidgetVisible);
+      if (!eoMapWidgetVisible) setEoMapImageryExpanded(false);
+    });
+  }
+  var eoWidgetFrame = el('eoMapWidgetFrame');
+  if (eoWidgetFrame) {
+    eoWidgetFrame.addEventListener('click', function () {
+      if (!eoWidgetFrame.disabled) setEoMapImageryExpanded(true);
+    });
+  }
+  var eoWidgetClose = el('eoMapWidgetClose');
+  if (eoWidgetClose) {
+    eoWidgetClose.addEventListener('click', function () {
+      setEoMapWidgetVisible(false);
+      setEoMapImageryExpanded(false);
+    });
+  }
+  var eoClose = el('eoMapOverlayClose');
+  if (eoClose) {
+    eoClose.addEventListener('click', function () { setEoMapImageryExpanded(false); });
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if (eoMapImageryExpanded) {
+      setEoMapImageryExpanded(false);
+      e.preventDefault();
+      return;
+    }
+    if (orbitMapExpanded) {
+      setOrbitMapExpanded(false);
+      e.preventDefault();
+    }
+  });
+
+  window.addEventListener('fullscreenchange', notifyMapLayoutChange);
+
+  var stage = el('mapStage');
+  if (stage && typeof ResizeObserver !== 'undefined' && !mapStageResizeObserver) {
+    mapStageResizeObserver = new ResizeObserver(function () {
+      if (activeTab === 2) notifyMapLayoutChange();
+    });
+    mapStageResizeObserver.observe(stage);
+  }
+}
+
+window.notifyMapLayoutChange = notifyMapLayoutChange;
+window.setOrbitMapExpanded = setOrbitMapExpanded;
 
 function focusFlatMapOnSatellite(lat, lon, marker) {
   if (!worldLeaflet) return;
@@ -310,8 +530,8 @@ function focusFlatMapOnSatellite(lat, lon, marker) {
 
 function fitWorldMapView(map) {
   if (!map) return;
-  // Keep a full-world overview (poles visible); do not clamp/fit to a tight bbox.
-  map.setView([20, 0], 2, { animate: false });
+  // Fill the map pane on tall/wide projectors while keeping the full world visible.
+  map.fitBounds([[-60, -180], [60, 180]], { padding: [8, 8], animate: false, maxZoom: 3 });
 }
 
 function trackLineStyle(color, selected) {
@@ -751,19 +971,21 @@ function formatNadirCoords(lat, lon) {
 
 function setEoImageryStatus(state) {
   var tag = el('eo-imagery-tag');
-  if (!tag) return;
-  tag.classList.remove('is-loading', 'is-error');
-  if (state === 'loading') {
-    tag.textContent = 'Loading';
-    tag.classList.add('is-loading');
-  } else if (state === 'ready') {
-    tag.textContent = 'Scene ready';
-  } else if (state === 'error') {
-    tag.textContent = 'No feed';
-    tag.classList.add('is-error');
-  } else {
-    tag.textContent = 'EO feed';
+  if (tag) {
+    tag.classList.remove('is-loading', 'is-error');
+    if (state === 'loading') {
+      tag.textContent = 'Loading';
+      tag.classList.add('is-loading');
+    } else if (state === 'ready') {
+      tag.textContent = 'Scene ready';
+    } else if (state === 'error') {
+      tag.textContent = 'No feed';
+      tag.classList.add('is-error');
+    } else {
+      tag.textContent = 'EO feed';
+    }
   }
+  setEoMapWidgetTag(state);
 }
 
 function renderEoImageryMeta(target, data) {
@@ -866,7 +1088,9 @@ function initEoImageryModal() {
   if (backdrop) backdrop.addEventListener('click', closeEoImageryModal);
   if (closeBtn) closeBtn.addEventListener('click', closeEoImageryModal);
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeEoImageryModal();
+    if (e.key !== 'Escape') return;
+    var modal = el('eo-imagery-modal');
+    if (modal && !modal.hidden) closeEoImageryModal();
   });
 }
 
@@ -879,6 +1103,8 @@ async function loadEoImagery(satName, force) {
     eoImageryInFlightKey = '';
     eoImageryLastData = null;
     setEoImageryFrameEnabled(false);
+    syncEoMapImageryUI();
+    updateOrbitLayoutControls();
     return;
   }
   if (typeof useApi !== 'undefined' && !useApi) {
@@ -913,6 +1139,9 @@ async function loadEoImagery(satName, force) {
   eoImageryInFlightKey = key;
   setEoImageryStatus('loading');
   resetEoImageryPreview();
+  maybeAutoShowEoMapImagery();
+  setEoMapWidgetTag('loading');
+  syncEoMapImageryUI();
 
   if (meta) {
     meta.innerHTML = '<div class="eo-meta-row"><span class="eo-meta-label">Status</span>' +
@@ -1003,6 +1232,8 @@ async function loadEoImagery(satName, force) {
     if (loading) loading.hidden = true;
     setEoImageryStatus('ready');
     setEoImageryFrameEnabled(true);
+    setEoMapWidgetTag('ready');
+    syncEoMapImageryUI();
   } catch (err) {
     if (reqId !== eoImageryRequestId) return;
     eoImageryInFlightKey = '';
@@ -1067,6 +1298,9 @@ function selectSatellite(name) {
     updateGlobeScene(true);
     if (mapMode === 'globe') showOrbitSatInfo(true);
   }
+  updateOrbitLayoutControls();
+  maybeAutoShowEoMapImagery();
+  syncEoMapImageryUI();
 }
 
 window.selectSatellite = selectSatellite;
@@ -1171,14 +1405,15 @@ function setupWorldMapLayers() {
   configureLeafletAssets();
   whenMapContainerReady(container, function () {
     worldLeaflet = L.map(container, {
-      zoomControl: true,
+      zoomControl: false,
       attributionControl: true,
       worldCopyJump: true,
       minZoom: 1,
       maxZoom: 10
     });
+    L.control.zoom({ position: 'bottomright' }).addTo(worldLeaflet);
     addReliableTiles(worldLeaflet, 'world');
-    worldLeaflet.setView([20, 0], 2);
+    fitWorldMapView(worldLeaflet);
     L.circleMarker([GS_LAT, GS_LON], { radius: 9, color: '#ff7c3a', fillColor: '#ff7c3a', fillOpacity: 0.95, weight: 2 })
       .addTo(worldLeaflet).bindPopup('<b>GS MUMBAI</b><br>Ground Station · Vidyajyoti');
     L.circle([GS_LAT, GS_LON], { radius: 800000, color: '#ff7c3a', fillColor: '#ff7c3a', fillOpacity: 0.04, weight: 1, dashArray: '6 4' }).addTo(worldLeaflet);
@@ -1228,7 +1463,7 @@ async function initWorldMap() {
   setupWorldMapLayers();
   refreshSatellitesFromApi();
 
-  window.addEventListener('resize', scheduleMapResize);
+  window.addEventListener('resize', notifyMapLayoutChange);
 
   function tickOrbitMaps() {
     if (activeTab === 2 && mapMode === 'map' && worldLeaflet) {
@@ -1466,10 +1701,12 @@ function setMapMode(mode, btn) {
     gw.style.display = 'none';
     wl.style.display = 'block';
     if (worldLeaflet) setTimeout(function () {
-      worldLeaflet.setView([20, 0], 2);
+      fitWorldMapView(worldLeaflet);
       refreshGroundTracks(true);
+      notifyMapLayoutChange();
     }, 80);
   }
+  notifyMapLayoutChange();
 }
 
 function cityPopup(name) {
@@ -1560,7 +1797,7 @@ function initMapOverlayToggles() {
       btn.classList.toggle('active', open);
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       if (panel.id === 'mtt') showOrbitSatInfo(true);
-      scheduleMapResize({ fitWorld: false });
+      notifyMapLayoutChange();
     });
   }
   bindToggle('togglePolar', 'polarOverlay');
@@ -1568,8 +1805,17 @@ function initMapOverlayToggles() {
   bindToggle('toggleMtt', 'mtt');
 }
 
+function setOrbitTabActive(active) {
+  document.body.classList.toggle('orbit-tab-active', active);
+  if (!active && orbitMapExpanded) setOrbitMapExpanded(false);
+  if (active) notifyMapLayoutChange();
+}
+
+window.setOrbitTabActive = setOrbitTabActive;
+
 setTimeout(function () {
   initMapOverlayToggles();
+  initOrbitPresentationUI();
   initEoImageryModal();
   if (typeof loadPasses === 'function') loadPasses();
   if (typeof updateMttOverlay === 'function') updateMttOverlay();

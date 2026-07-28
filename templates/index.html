@@ -17,7 +17,7 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=20260714gps">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=20260728eobig">
 <script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
 <script src="https://unpkg.com/globe.gl@2.32.1/dist/globe.gl.min.js"></script>
 </head>
@@ -295,9 +295,16 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
           <button type="button" class="map-ov-btn active" id="toggleMtt" aria-expanded="true">Sat Info</button>
           <button type="button" class="map-ov-btn" id="togglePolar" aria-expanded="false">Sky Plot</button>
           <button type="button" class="map-ov-btn" id="toggleSig" aria-expanded="false">Signal</button>
+          <button type="button" class="map-ov-btn map-ov-btn-accent" id="toggleMapExpand" aria-pressed="false" title="Fullscreen map for projector">Expand map</button>
+          <button type="button" class="map-ov-btn" id="toggleEoMapView" aria-pressed="false" hidden title="Show nadir imagery on map">Imagery</button>
         </div>
       </div>
       <div id="mapStage">
+      <div class="orbit-panel-toggles" id="orbitPanelToggles" aria-label="Panel visibility">
+        <button type="button" class="orbit-panel-btn" id="toggleOrbitLpanel" aria-pressed="true" title="Show or hide satellite list">◀ Left</button>
+        <button type="button" class="orbit-panel-btn" id="toggleOrbitRpanel" aria-pressed="true" title="Show or hide satellite details">Right ▶</button>
+        <button type="button" class="orbit-panel-btn" id="toggleOrbitBottom" aria-pressed="true" title="Show or hide status bar and pass table">▼ Bottom</button>
+      </div>
       <div id="orbitDataBanner" class="orbit-data-banner" hidden></div>
       <div id="mapLoadHint" class="map-fallback-msg">Loading map…</div>
       <div id="worldMapLeaflet"></div>
@@ -321,6 +328,29 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
         </div>
       </div>
       <!-- Selected satellite info (compact, top-right) -->
+      <!-- EO imagery on map (compact → click to expand) -->
+      <div id="eoMapWidget" class="eo-map-widget map-overlay" hidden>
+        <div class="eo-map-widget-hdr">
+          <span class="eo-map-widget-title">Nadir Imagery</span>
+          <span class="eo-imagery-tag" id="eoMapWidgetTag">EO feed</span>
+          <button type="button" class="eo-map-widget-dismiss" id="eoMapWidgetClose" aria-label="Hide imagery panel">&times;</button>
+        </div>
+        <button type="button" class="eo-map-widget-frame" id="eoMapWidgetFrame" aria-label="Expand ground scene" disabled>
+          <div class="eo-map-widget-loading" id="eoMapWidgetLoading">Loading ground scene…</div>
+          <img id="eoMapWidgetImg" class="eo-map-widget-img" alt="Earth observation preview" hidden>
+          <span class="eo-imagery-expand-hint" id="eoMapWidgetHint" hidden>Click to enlarge</span>
+        </button>
+        <div class="eo-map-widget-meta" id="eoMapWidgetMeta"></div>
+      </div>
+      <div id="eoMapOverlay" class="eo-map-overlay eo-map-overlay-full" hidden>
+        <div class="eo-map-overlay-box" role="region" aria-label="Nadir imagery preview">
+          <button type="button" class="eo-map-overlay-close" id="eoMapOverlayClose" aria-label="Close imagery panel">&times;</button>
+          <div class="eo-map-overlay-title" id="eoMapOverlayTitle">Nadir ground scene</div>
+          <div class="eo-map-overlay-loading" id="eoMapOverlayLoading">Loading ground scene…</div>
+          <img id="eoMapOverlayImg" class="eo-map-overlay-img" alt="Earth observation preview" hidden>
+          <div class="eo-map-overlay-meta" id="eoMapOverlayMeta"></div>
+        </div>
+      </div>
       <div id="mtt" class="map-overlay-open">
         <div class="mtt-name" id="mttName">VO-52</div>
         <div class="mtt-row"><span class="mtt-k">Az</span><span class="mtt-v" id="mttAz">305.8&deg;</span></div>
@@ -549,10 +579,10 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
 <div id="vjToast" class="vj-toast" hidden role="status" aria-live="polite"></div>
 <script src="{{ url_for('static', filename='vendor/satellite/satellite.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/orbit-engine.js') }}?v=20260708eo2"></script>
-<script src="{{ url_for('static', filename='js/app.js') }}?v=20260709mappan"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}?v=20260724present"></script>
 <script src="{{ url_for('static', filename='js/sensors.js') }}?v=20260714gps"></script>
 <script src="{{ url_for('static', filename='js/charts.js') }}?v=20260709signal"></script>
-<script src="{{ url_for('static', filename='js/maps.js') }}?v=20260714wrap3"></script>
+<script src="{{ url_for('static', filename='js/maps.js') }}?v=20260728eowidget"></script>
 <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 </body>
 </html>
