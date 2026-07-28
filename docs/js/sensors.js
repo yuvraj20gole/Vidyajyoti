@@ -147,6 +147,24 @@ function applyTelemetry(data) {
   if (typeof drawTempSparkline === 'function' && window._sparklineData) drawTempSparkline();
 }
 
+function formatIrState(ir) {
+  if (ir === 1 || ir === true || ir === '1') return 'Detected';
+  if (ir === 0 || ir === false || ir === '0') return 'Clear';
+  return '--';
+}
+
+function syncEsp32EnvMetrics(data) {
+  if (!data) return;
+  function s(id, v) { var e = el(id); if (e) e.textContent = v; }
+  var temp = pickSensorNumber(data, ['temp', 'temperature', 'temperature_c']);
+  var hum = pickSensorNumber(data, ['hum', 'humidity', 'humidity_pct']);
+  var dist = pickSensorNumber(data, ['distance_cm', 'distance']);
+  s('esp32TempVal', temp != null ? temp.toFixed(1) : '--');
+  s('esp32HumVal', hum != null ? Math.round(hum) : '--');
+  s('esp32DistVal', dist != null ? dist.toFixed(1) : '--');
+  s('esp32IrVal', formatIrState(data.ir));
+}
+
 function formatGpsSpeedKmh(speed) {
   if (speed == null || isNaN(Number(speed))) return '--';
   return Number(speed).toFixed(1);
@@ -212,6 +230,7 @@ function applyEsp32Sensor(data) {
   empty.hidden = true;
   grid.hidden = false;
 
+  syncEsp32EnvMetrics(data);
   syncEsp32GpsMetrics(window.latestSensorGps);
 
   if (ageLabel) {

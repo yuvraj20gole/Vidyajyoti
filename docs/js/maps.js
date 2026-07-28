@@ -328,8 +328,8 @@ function setOrbitMapExpanded(expanded) {
     btn.textContent = expanded ? 'Exit expand' : 'Expand map';
   }
   if (!expanded) {
-    setEoMapWidgetVisible(false);
     setEoMapImageryExpanded(false);
+    maybeAutoShowEoMapImagery();
   } else {
     maybeAutoShowEoMapImagery();
   }
@@ -338,10 +338,31 @@ function setOrbitMapExpanded(expanded) {
 }
 
 function maybeAutoShowEoMapImagery() {
-  if (orbitMapExpanded && isEoSatellite(selectedSatName)) {
+  if (shouldShowEoMapImagery()) {
     setEoMapWidgetVisible(true);
     setEoMapImageryExpanded(false);
   }
+}
+
+function shouldShowEoMapImagery() {
+  return activeTab === 2 && mapMode === 'map' && isEoSatellite(selectedSatName);
+}
+
+function updateOrbitLayoutControls() {
+  var eoBtn = el('toggleEoMapView');
+  if (!eoBtn) return;
+  var onMapTab = activeTab === 2 && mapMode === 'map';
+  var eoSelected = isEoSatellite(selectedSatName);
+  eoBtn.hidden = !onMapTab;
+  eoBtn.disabled = !eoSelected;
+  eoBtn.title = eoSelected
+    ? 'Show or hide compact imagery on map'
+    : 'Select an Earth observation satellite';
+  if (!eoSelected) {
+    setEoMapWidgetVisible(false);
+    setEoMapImageryExpanded(false);
+  }
+  syncEoMapImageryUI();
 }
 
 function setEoMapWidgetVisible(visible) {
@@ -357,10 +378,6 @@ function setEoMapWidgetVisible(visible) {
 function setEoMapImageryExpanded(expanded) {
   eoMapImageryExpanded = expanded;
   syncEoMapImageryUI();
-}
-
-function shouldShowEoMapImagery() {
-  return orbitMapExpanded && isEoSatellite(selectedSatName);
 }
 
 function setEoMapWidgetTag(state) {
@@ -1706,6 +1723,8 @@ function setMapMode(mode, btn) {
       notifyMapLayoutChange();
     }, 80);
   }
+  updateOrbitLayoutControls();
+  if (mode === 'map') maybeAutoShowEoMapImagery();
   notifyMapLayoutChange();
 }
 
@@ -1808,7 +1827,13 @@ function initMapOverlayToggles() {
 function setOrbitTabActive(active) {
   document.body.classList.toggle('orbit-tab-active', active);
   if (!active && orbitMapExpanded) setOrbitMapExpanded(false);
-  if (active) notifyMapLayoutChange();
+  if (active) {
+    updateOrbitLayoutControls();
+    maybeAutoShowEoMapImagery();
+    notifyMapLayoutChange();
+  } else {
+    syncEoMapImageryUI();
+  }
 }
 
 window.setOrbitTabActive = setOrbitTabActive;

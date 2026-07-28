@@ -17,7 +17,7 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=20260728eobig">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=20260728eomap">
 <script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
 <script src="https://unpkg.com/globe.gl@2.32.1/dist/globe.gl.min.js"></script>
 </head>
@@ -240,13 +240,33 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
         <div class="t1-grid esp32-metrics" id="esp32MetricsGrid" hidden>
           <div class="t1-metric">
             <div class="card-shine"></div>
+            <div class="tm-lbl">Temperature (sensor)</div>
+            <div><span class="tm-val" id="esp32TempVal">--</span><span class="tm-unit" style="color:var(--org);">&deg;C</span></div>
+          </div>
+          <div class="t1-metric">
+            <div class="card-shine"></div>
+            <div class="tm-lbl">Humidity (sensor)</div>
+            <div><span class="tm-val" id="esp32HumVal" style="color:var(--grn);">--</span><span class="tm-unit" style="color:var(--grn);">%</span></div>
+          </div>
+          <div class="t1-metric">
+            <div class="card-shine"></div>
+            <div class="tm-lbl">Distance (sensor)</div>
+            <div><span class="tm-val" id="esp32DistVal" style="color:var(--acc);">--</span><span class="tm-unit" style="color:var(--acc);">cm</span></div>
+          </div>
+          <div class="t1-metric">
+            <div class="card-shine"></div>
+            <div class="tm-lbl">IR sensor state</div>
+            <div><span class="tm-val" id="esp32IrVal" style="color:var(--pur);font-size:1.1rem;">--</span></div>
+          </div>
+          <div class="t1-metric">
+            <div class="card-shine"></div>
             <div class="tm-lbl">Latitude (GPS)</div>
-            <div><span class="tm-val" id="esp32LatVal" style="color:var(--acc);">--</span></div>
+            <div><span class="tm-val" id="esp32LatVal" style="color:var(--acc);font-size:1.15rem;">--</span></div>
           </div>
           <div class="t1-metric">
             <div class="card-shine"></div>
             <div class="tm-lbl">Longitude (GPS)</div>
-            <div><span class="tm-val" id="esp32LonVal" style="color:var(--acc);">--</span></div>
+            <div><span class="tm-val" id="esp32LonVal" style="color:var(--acc);font-size:1.15rem;">--</span></div>
           </div>
           <div class="t1-metric">
             <div class="card-shine"></div>
@@ -580,9 +600,9 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
 <script src="{{ url_for('static', filename='vendor/satellite/satellite.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/orbit-engine.js') }}?v=20260708eo2"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}?v=20260724present"></script>
-<script src="{{ url_for('static', filename='js/sensors.js') }}?v=20260728gpsboxes"></script>
+<script src="{{ url_for('static', filename='js/sensors.js') }}?v=20260728esp8"></script>
 <script src="{{ url_for('static', filename='js/charts.js') }}?v=20260709signal"></script>
-<script src="{{ url_for('static', filename='js/maps.js') }}?v=20260728eowidget"></script>
+<script src="{{ url_for('static', filename='js/maps.js') }}?v=20260728eomap"></script>
 <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 </body>
 </html>
