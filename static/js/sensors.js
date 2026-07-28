@@ -147,10 +147,23 @@ function applyTelemetry(data) {
   if (typeof drawTempSparkline === 'function' && window._sparklineData) drawTempSparkline();
 }
 
-function formatIrState(ir) {
-  if (ir === 1 || ir === true || ir === '1') return 'Detected';
-  if (ir === 0 || ir === false || ir === '0') return 'Clear';
-  return '--';
+function formatGpsSpeedKmh(speed) {
+  if (speed == null || isNaN(Number(speed))) return '--';
+  return Number(speed).toFixed(1);
+}
+
+function formatGpsAltM(alt) {
+  if (alt == null || isNaN(Number(alt))) return '--';
+  return Number(alt).toFixed(1);
+}
+
+function syncEsp32GpsMetrics(g) {
+  g = g || window.latestSensorGps || {};
+  function s(id, v) { var e = el(id); if (e) e.textContent = v; }
+  s('esp32LatVal', formatGpsCoord(g.gps_lat, 'N', 'S'));
+  s('esp32LonVal', formatGpsCoord(g.gps_lon, 'E', 'W'));
+  s('esp32AltVal', formatGpsAltM(g.gps_alt));
+  s('esp32SpeedVal', formatGpsSpeedKmh(g.gps_speed));
 }
 
 function pickSensorNumber(data, keys) {
@@ -182,10 +195,9 @@ function applyEsp32Sensor(data) {
     gps_sats: pickSensorNumber(data || {}, ['gps_sats', 'sats', 'satellites'])
   };
   syncOrbitTrackerGpsBar();
+  syncEsp32GpsMetrics(window.latestSensorGps);
 
   if (!dot || !empty || !grid) return;
-
-  function s(id, v) { var e = el(id); if (e) e.textContent = v; }
 
   dot.className = 'sdot ' + (connected ? 'g' : 'off');
   if (connLabel) connLabel.textContent = connected ? 'Connected' : 'Offline';
@@ -200,14 +212,7 @@ function applyEsp32Sensor(data) {
   empty.hidden = true;
   grid.hidden = false;
 
-  var temp = pickSensorNumber(data, ['temp', 'temperature', 'temperature_c']);
-  var hum = pickSensorNumber(data, ['hum', 'humidity', 'humidity_pct']);
-  var dist = pickSensorNumber(data, ['distance_cm', 'distance']);
-
-  s('esp32TempVal', temp != null ? temp.toFixed(1) : '--');
-  s('esp32HumVal', hum != null ? Math.round(hum) : '--');
-  s('esp32DistVal', dist != null ? dist.toFixed(1) : '--');
-  s('esp32IrVal', formatIrState(data.ir));
+  syncEsp32GpsMetrics(window.latestSensorGps);
 
   if (ageLabel) {
     var age = data.age_seconds;

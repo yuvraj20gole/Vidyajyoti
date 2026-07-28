@@ -240,23 +240,23 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
         <div class="t1-grid esp32-metrics" id="esp32MetricsGrid" hidden>
           <div class="t1-metric">
             <div class="card-shine"></div>
-            <div class="tm-lbl">Temperature (sensor)</div>
-            <div><span class="tm-val" id="esp32TempVal">--</span><span class="tm-unit" style="color:var(--org);">&deg;C</span></div>
+            <div class="tm-lbl">Latitude (GPS)</div>
+            <div><span class="tm-val" id="esp32LatVal" style="color:var(--acc);">--</span></div>
           </div>
           <div class="t1-metric">
             <div class="card-shine"></div>
-            <div class="tm-lbl">Humidity (sensor)</div>
-            <div><span class="tm-val" id="esp32HumVal" style="color:var(--grn);">--</span><span class="tm-unit" style="color:var(--grn);">%</span></div>
+            <div class="tm-lbl">Longitude (GPS)</div>
+            <div><span class="tm-val" id="esp32LonVal" style="color:var(--acc);">--</span></div>
           </div>
           <div class="t1-metric">
             <div class="card-shine"></div>
-            <div class="tm-lbl">Distance / Simulated Altitude</div>
-            <div><span class="tm-val" id="esp32DistVal" style="color:var(--acc);">--</span><span class="tm-unit" style="color:var(--acc);">cm</span></div>
+            <div class="tm-lbl">Altitude (GPS)</div>
+            <div><span class="tm-val" id="esp32AltVal" style="color:var(--org);">--</span><span class="tm-unit" style="color:var(--org);">m</span></div>
           </div>
           <div class="t1-metric">
             <div class="card-shine"></div>
-            <div class="tm-lbl">IR Sensor State</div>
-            <div><span class="tm-val" id="esp32IrVal" style="color:var(--pur);font-size:1.1rem;">--</span></div>
+            <div class="tm-lbl">Speed (GPS)</div>
+            <div><span class="tm-val" id="esp32SpeedVal" style="color:var(--grn);">--</span><span class="tm-unit" style="color:var(--grn);">km/h</span></div>
           </div>
         </div>
       </div>
@@ -580,7 +580,7 @@ window.VJ_SAT_ICON = "{{ url_for('static', filename='images/satellite.svg') }}";
 <script src="{{ url_for('static', filename='vendor/satellite/satellite.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/orbit-engine.js') }}?v=20260708eo2"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}?v=20260724present"></script>
-<script src="{{ url_for('static', filename='js/sensors.js') }}?v=20260714gps"></script>
+<script src="{{ url_for('static', filename='js/sensors.js') }}?v=20260728gpsboxes"></script>
 <script src="{{ url_for('static', filename='js/charts.js') }}?v=20260709signal"></script>
 <script src="{{ url_for('static', filename='js/maps.js') }}?v=20260728eowidget"></script>
 <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
