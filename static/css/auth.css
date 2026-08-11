@@ -98,6 +98,19 @@ body::after{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
 .field{margin-bottom:16px;}
 .field-label{display:block;font-family:var(--fm);font-size:.56rem;letter-spacing:2px;
   text-transform:uppercase;color:var(--dim);margin-bottom:6px;transition:color .2s;}
+.field-label .req{color:var(--red);margin-left:2px;font-weight:700;}
+.form-required-note{font-family:var(--fm);font-size:.52rem;color:var(--dim);letter-spacing:.5px;margin:-18px 0 16px;}
+.field-rules{list-style:none;margin:0 0 4px;padding:0;display:flex;flex-direction:column;gap:3px;}
+.field-hint{font-family:var(--fm);font-size:.52rem;color:var(--acc2);letter-spacing:.3px;margin-top:2px;min-height:14px;}
+.field-hint.checking{color:var(--dim);}
+.field-hint.invalid{color:var(--red);}
+.rule-item{font-family:var(--fm);font-size:.52rem;color:var(--dim);letter-spacing:.3px;display:flex;align-items:center;gap:6px;transition:color .2s;}
+.rule-mark{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;
+  border:1px solid rgba(100,160,255,.25);font-size:.62rem;line-height:1;color:var(--dim);flex-shrink:0;transition:all .2s;}
+.rule-item.met{color:var(--grn);}
+.rule-item.met .rule-mark{border-color:rgba(0,229,160,.45);background:rgba(0,229,160,.12);color:var(--grn);content:'';}
+.rule-item.unmet{color:var(--red);}
+.rule-item.unmet .rule-mark{border-color:rgba(255,68,102,.45);color:var(--red);}
 .field:focus-within .field-label{color:var(--acc);}
 .input-wrap{position:relative;}
 .input-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;
@@ -150,6 +163,7 @@ body::after{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
 .check-box .ck{font-size:10px;color:var(--acc);display:none;}
 .check-box.checked .ck{display:block;}
 .check-lbl{font-family:var(--fb);font-size:.7rem;color:var(--dim);line-height:1.5;}
+.check-lbl .req{margin-right:2px;}
 .check-lbl a{color:var(--acc2);cursor:pointer;}
 
 /* ── REMEMBER + FORGOT ── */
